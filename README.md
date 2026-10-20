@@ -16,10 +16,11 @@
 2. [`docs/README.md`](./docs/README.md) —— 硬性规则（**不可违反**）
 3. [`docs/02-contracts/design-system.md`](./docs/02-contracts/design-system.md) —— 视觉基线（**不可修改**）
 4. [`docs/01-spec/`](./docs/01-spec/) —— 目标架构与权限方案
-5. [`docs/03-tickets/`](./docs/03-tickets/) —— 按 T0 → T6 顺序执行
-6. [`docs/04-acceptance/checklist.md`](./docs/04-acceptance/checklist.md) —— 交付前自检
+5. [`docs/06-review/2026-10-20-plan-review.md`](./docs/06-review/2026-10-20-plan-review.md) —— 最新计划评审与修订建议
+6. [`docs/03-tickets/`](./docs/03-tickets/) —— 计划修订完成后按更新后的工单执行
+7. [`docs/04-acceptance/checklist.md`](./docs/04-acceptance/checklist.md) —— 交付前自检
 
-**从 [`docs/03-tickets/T0-security.md`](./docs/03-tickets/T0-security.md) 开始。**
+**当前不要直接执行旧版 T0/T1。** 先按评审文档完成 M0/M1 和工单修订，再开始项目初始化。
 
 ---
 
@@ -45,8 +46,10 @@
 │   │   └── T6-content-and-launch.md
 │   ├── 04-acceptance/
 │   │   └── checklist.md            验收清单（陈主用）
-│   └── 05-migration/
-│       └── legacy-audit.md         旧项目 portfolio 审计
+│   ├── 05-migration/
+│   │   └── legacy-audit.md         旧项目 portfolio 审计
+│   └── 06-review/
+│       └── 2026-10-20-plan-review.md 最新计划评审与修订建议
 ├── TASKS.md                        任务板（蓝维护）
 ├── DECISIONS.md                    决策日志
 └── README.md                       本文件
@@ -65,7 +68,7 @@
 ## 技术栈（规划）
 
 Next.js (App Router) · TypeScript · Tailwind v4 (oklch) · shadcn/ui · Radix UI · Framer Motion · Lucide React
-内容源：Notion API（data sources, `2025-09-03`） · 数据层：Supabase Postgres · 部署：Vercel
+内容源：Notion API（版本待实施前核验并固定） · 数据层：Supabase Postgres · 部署：Vercel
 
 详细说明见 [`docs/00-overview.md`](./docs/00-overview.md)。
 

@@ -37,8 +37,10 @@ docs/
 │   └── T5-economy-and-legal.md
 ├── 04-acceptance/          ← 【验收层】怎么确认做对了
 │   └── checklist.md
-└── 05-migration/           ← 【历史】旧项目现状与迁移记录
-    └── legacy-audit.md
+├── 05-migration/           ← 【历史】旧项目现状与迁移记录
+│   └── legacy-audit.md
+└── 06-review/              ← 【评审】计划问题与调整建议
+    └── 2026-10-20-plan-review.md
 ```
 
 **三层分离的核心：变更只发生在最底层。**
@@ -59,8 +61,9 @@ docs/
 1. docs/00-overview.md              ← 先看这个，理解全局与边界
 2. docs/02-contracts/design-system.md ← 硬约束，必须遵守
 3. docs/01-spec/*.md                ← 理解目标状态
-4. docs/03-tickets/                 ← 按顺序执行
-5. docs/04-acceptance/checklist.md  ← 交付前自检
+4. docs/06-review/*.md              ← 先确认最新评审建议和修订状态
+5. docs/03-tickets/                 ← 计划修订完成后按更新后的工单执行
+6. docs/04-acceptance/checklist.md  ← 交付前自检
 ```
 
 ---
