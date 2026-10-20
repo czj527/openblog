@@ -53,7 +53,7 @@
 |---|---|---|---|
 | 文章正文、标题、摘要、标签、分类、封面 | **Notion Database** | 只读 | 陈在 Notion 里写作，天然 Markdown/富文本友好 |
 | 草稿 | **Notion Database**（同一库，`Status = Draft`） | 只读 | 不再需要独立草稿表 |
-| 五年经济规划（结构化数据） | **Notion Database** | 只读 | 后续可视化取数 |
+| 五年经济规划（**脱敏公开数据**） | **Notion Database「Economy Public」** | 只读 | 只含阶段/百分比/里程碑；原始金额留在私人库，永不外流 |
 | 评论 | **Supabase Postgres** | 读写 | 需要写入、审核、反垃圾，Notion 不适合 |
 | 点赞 | **Supabase Postgres** | 读写 | 高频写入 |
 | 留言板 | **Supabase Postgres** | 读写 | 同上 |
@@ -63,9 +63,10 @@
 | 日程 | **Supabase Postgres** | 读写 | 同上 |
 | 活动日志 | **Supabase Postgres** | 读写 | 同上 |
 | 站点配置 | **Supabase Postgres** | 读写 | 同上 |
-| 静态长文（历史归档） | `src/content/` 本地 MD | 只读 | 保留格式复杂的历史文章，不强制迁移 |
 
-> **注意**：`Project` 表今天在 Supabase 和 Prisma 里各有一份 → 统一保留 **Supabase** 版本，Prisma 版本随 `prisma/` 目录一起删除。
+> **两个必须遵守的边界**
+> 1. **历史文章不迁移**（2026-10-20 决策 Q2）：旧文章、评论、点赞一律不进新库，从零开始。因此**没有** `src/content/` 静态归档这一层。
+> 2. **经济数据分两层**（决策 Q3）：私人 `Economy Plan` 库永不出网；公开页只读单独的 `Economy Public` 脱敏库。详见 `T5-economy-and-legal.md`。
 
 ---
 
@@ -91,21 +92,45 @@
 
 **正文**：页面 body 内容（Notion blocks）。
 
-### 3.2 经济规划库 `Economy Plan`
+### 3.2 经济规划：两个库（私人与公开分离）
+
+> 🚨 **原方案已作废。** 原文写「这个库既是陈自己的规划工具，也是博客展示页的数据源 —— 一份数据两用」。
+> 按 2026-10-20 决策 Q3（需要公开脱敏版），**这个设计会导致私人财务数据公开在 czj527.xyz 上**。
+> 现改为**两个独立库**，数据不共享。
+
+#### 3.2.1 私人库 `Economy Plan`（不接站点）
 
 | 属性名 | Notion 类型 | 说明 |
 |---|---|---|
-| `Name` | Title | 规划项名称（如"应急基金"、"技能投资"） |
-| `Year` | Select | `2027` / `2028` / ... / `2031`（五年规划） |
+| `Name` | Title | 规划项名称 |
+| `Year` | Select | `2027` / ... / `2031` |
 | `Category` | Select | `收入` / `储蓄` / `投资` / `支出` / `保障` |
 | `Target Amount` | Number | 目标金额（元） |
 | `Current Amount` | Number | 当前进度 |
 | `Priority` | Select | `P0` / `P1` / `P2` |
 | `Status` | Select | `规划中` / `进行中` / `已完成` / `已放弃` |
 | `Notes` | Rich Text | 备注 |
-| `Milestones` | Relation | 关联里程碑子库（可选） |
 
-> 这个库既是**陈自己的规划工具**，也是**博客展示页的数据源** —— 一份数据两用，这是 Notion 做 CMS 的最大价值点。
+**约束**：此库**不得**被站点代码引用。环境变量中**禁止**出现其 Data Source ID（见 T5 的 check-env 规则）。
+
+#### 3.2.2 公开库 `Economy Public`（站点唯一数据源）
+
+| 属性名 | Notion 类型 | 说明 |
+|---|---|---|
+| `Phase` | Title | 阶段名，如「储蓄积累期」 |
+| `Year Start` / `Year End` | Number | 时间节点 |
+| `Progress` | Number | **百分比 0-100**（不是金额） |
+| `Status` | Select | `未开始` / `进行中` / `已完成` |
+| `Description` | Rich Text | 文字描述，**不得含金额** |
+| `Milestones` | Rich Text | 里程碑，一行一个 |
+| `Order` | Number | 排序 |
+
+**约束**：
+- 🚫 **不得**设置 `Target Amount`、`Current Amount`、`Balance`、`Notes` 等字段
+- ✅ 站点环境变量只配 `NOTION_ECONOMY_PUBLIC_DATA_SOURCE_ID`
+- ✅ 页面顶部注明「本页为脱敏进度展示，不含具体金额」
+
+**为什么必须两个库而不是一个库隐藏字段**：Notion Integration 拿到库权限后能读全部属性，靠代码「只读某些字段」是一层软约束，改错一行就泄露。物理隔离成两个库，是硬约束。
 
 ---
 
@@ -286,13 +311,14 @@ Notion API: retrieve block children（分页拉全量，递归处理嵌套块）
 |---|---|---|
 | `NOTION_TOKEN` | Notion Integration Token | **仅服务端** |
 | `NOTION_BLOG_DATA_SOURCE_ID` | 文章库 Data Source ID | 仅服务端 |
-| `NOTION_ECONOMY_DATA_SOURCE_ID` | 经济规划库 ID | 仅服务端 |
+| `NOTION_ECONOMY_PUBLIC_DATA_SOURCE_ID` | **公开脱敏**经济库 ID | 仅服务端 |
+| ~~`NOTION_ECONOMY_DATA_SOURCE_ID`~~ | ❌ **禁止使用**（旧名，指私人库） | — |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目 URL | 公开 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名 key（只读，受 RLS 保护） | 公开 |
 | `SUPABASE_SERVICE_ROLE_KEY` | 服务端 key | **仅服务端** |
 | `ADMIN_PASSWORD_HASH` | 管理员密码哈希（bcrypt/argon2） | **仅服务端** |
 | `AUTH_SECRET` | 会话签名密钥（32+ 字节随机） | **仅服务端** |
-| `REVALIDATE_SECRET` | Webhook 校验密钥 | **仅服务端** |
+| `NOTION_WEBHOOK_SECRET` | Webhook 校验密钥 | **仅服务端** |
 
 **删除的变量**：`DATABASE_URL`、`TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`、`ADMIN_PASSWORD`（明文，改为 hash）。
 

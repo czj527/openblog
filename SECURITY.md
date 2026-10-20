@@ -10,13 +10,21 @@
 |---|---|---|
 | `NOTION_TOKEN` | Notion 集成密钥 | 仅服务端 |
 | `NOTION_BLOG_DATA_SOURCE_ID` | 文章库 | 仅服务端 |
-| `NOTION_ECONOMY_DATA_SOURCE_ID` | 经济规划库 | 仅服务端 |
+| `NOTION_ECONOMY_PUBLIC_DATA_SOURCE_ID` | **公开脱敏**经济库 | 仅服务端 |
+| `NOTION_WEBHOOK_SECRET` | Webhook 签名校验 | 仅服务端 |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目地址 | 公开 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名键（受 RLS 保护） | 公开 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名键（**只读**，受 RLS 保护） | 公开 |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase 服务端键 | 仅服务端 |
 | `ADMIN_PASSWORD_HASH` | 管理员密码哈希 | 仅服务端 |
 | `AUTH_SECRET` | 会话签名密钥（≥32 字节随机） | 仅服务端 |
-| `REVALIDATE_SECRET` | Webhook 校验密钥 | 仅服务端 |
+
+## ❌ 禁止出现的环境变量
+
+| 变量 | 原因 |
+|---|---|
+| `NOTION_ECONOMY_DATA_SOURCE_ID` | 旧名，指向**私人**经济库。配了会导致财务数据公开 |
+
+> `scripts/check-env.mjs` 检测到禁止变量时应**直接报错退出**，不得静默忽略。
 
 完整清单见 `docs/01-spec/architecture.md` 第 7 节。
 

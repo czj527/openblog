@@ -89,7 +89,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '「旧默认密码」';
 | `DELETE /api/guestbook/[id]` | ❌ | ✅ | |
 | `/api/friend-links`（POST/PUT/DELETE） | ❌ | ✅ | GET 公开 |
 | `/api/tasks`、`/api/schedules`、`/api/projects`、`/api/activity-log` | ❌ | ✅ | 个人管理数据，全部需登录 |
-| `/api/revalidate` | ❌ | ❌ | 仅 Webhook，校验 `REVALIDATE_SECRET` |
+| `/api/revalidate` | ❌ | ❌ | 仅 Webhook，校验 `NOTION_WEBHOOK_SECRET` |
 | ~~`POST /api/supabase`~~ | — | — | **删除** |
 | ~~`DELETE /api/clear-data`~~ | — | — | **删除** |
 
@@ -179,7 +179,7 @@ verifyAdmin(request):
 | `POST /api/comments` | 内容长度 5-2000 字；同 IP 每分钟 ≤ 3 条；默认 `approved=false` 待审核；strip HTML |
 | `POST /api/likes` | 同 IP 同文章唯一（DB unique 约束）；每分钟 ≤ 10 次 |
 | `POST /api/guestbook` | 内容长度 1-500 字；同 IP 每分钟 ≤ 2 条；strip HTML |
-| `POST /api/revalidate` | 校验 `REVALIDATE_SECRET`（HMAC 或 header 比对） |
+| `POST /api/revalidate` | 校验 `NOTION_WEBHOOK_SECRET`（HMAC 或 header 比对） |
 
 ### 4.5 数据层权限
 

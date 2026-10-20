@@ -85,9 +85,15 @@
 可选变量（缺失只警告）：
   NOTION_TOKEN
   NOTION_BLOG_DATA_SOURCE_ID
-  NOTION_ECONOMY_DATA_SOURCE_ID
+  NOTION_ECONOMY_PUBLIC_DATA_SOURCE_ID
   NOTION_WEBHOOK_SECRET
+
+禁止出现的变量（配置了直接报错退出）：
+  NOTION_ECONOMY_DATA_SOURCE_ID      ← 旧名，指向私人经济库，会导致财务数据公开
 ```
+
+> ⚠️ 「禁止变量」是主动防御：避免有人图省事把私人 Notion 库 ID 配进来。
+> 该规则必须在 `check-env.mjs` 里实现，并在 T5 验收（S20）中验证。
 
 **要求**：错误信息只说明「哪个变量缺失」，**不得打印变量值**。
 

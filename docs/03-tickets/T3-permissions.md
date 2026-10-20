@@ -51,12 +51,14 @@
 - 错误响应不泄露内部信息（不返回 SQL、堆栈、表名）
 
 **验收标准**
-- 对应 `docs/04-acceptance/checklist.md` S1-S12 全部通过
+- 对应 `docs/04-acceptance/checklist.md` 安全项 S1-S12、S21 全部通过
 - 新增专项：
   - [ ] 匿名 `POST /api/tasks` → 401
   - [ ] 匿名 `DELETE /api/comments/xxx` → 401
   - [ ] 管理员增删改任务/日程/项目/友链全部正常
-  - [ ] 评论提交后为待审核状态，管理员审核后前台可见
+  - [ ] 评论提交后为待审核状态（`status='pending'`），管理员审核后前台可见
+  - [ ] 评论/点赞写入的 `post_id` 是 Notion page ID，**不是 slug**
+  - [ ] 匿名直接用 anon key 插库 → 被 RLS 拒绝
   - [ ] 同 IP 1 分钟内提交 4 条评论 → 第 4 条被限流
 
 **依赖**：T2 完成。

@@ -1,53 +1,74 @@
-# T1 · 数据迁移与清理（原「瘦身删除」已作废重写）
+# T1 · 存量数据迁移（大幅缩减版）
 
 > 状态：`待开工`
 > 负责人：开发 Agent
 > 验收人：陈
 > 所属项目：**openblog**
-> 依赖：**T-1 完成**（白名单迁移已确认无 AI 写作助手与 Prisma）
+> 依赖：**T-1 完成**
 >
 > ⚠️ 执行前必读：`docs/README.md` 硬性规则 + `docs/02-contracts/design-system.md`
 
 ---
 
-## 重要说明：本工单已被重写
+## ⚠️ 本工单已因 2026-10-20 决策大幅缩减
 
-旧版 T1 叫「瘦身删除」，要求删除 `portfolio` 的 `src/app/ai-write/`、`prisma/`、`src/components/blog-agent/` 等 20+ 个文件。
+陈的三个决定（见 `TASKS.md` Q1/Q2/Q3）直接改变了本工单的范围：
 
-**这些文件在 openblog 里从来没有**：
-- T-1 的白名单就已经排除了 AI 写作助手和 Prisma
-- openblog 从零建起，不存在「先复制再删除」的问题
+| 决策 | 对 T1 的影响 |
+|---|---|
+| **Q1 = 全删** roadmap / project-logs / workflow_* | 这些表**不迁移**，目标模型也不建 |
+| **Q2 = 历史文章全部不要** | 文章**不迁移**；`src/content/` 不迁移；旧 slug 不做 301 |
+| **Q3 = 经济页要公开脱敏版** | 私人财务数据**绝不迁移**到任何公开表 |
 
-所以本工单的实际内容变成：**历史数据迁移 + 旧站数据源确认**。
+### 🔴 关键的连带影响：评论和点赞无法迁移
 
-> 📌 原 T1 中仍然有效的要求已并入 T-1（不迁移 AI 助手/Prisma）与本工单（数据导出与校验）。
+评论和点赞是**挂在文章上的**。文章全部不要，就意味着：
+
+- 旧评论 → 关联的文章不存在了，迁过来就是**孤儿数据**
+- 旧点赞 → 同理
+
+**因此评论和点赞也不迁移。**
+
+> 这是一个必须让陈明确知道的结果。如果陈希望保留旧评论，需要单独决定「保留哪几篇文章用于承载评论」——但按 Q2「全部不要，从零开始」，默认不保留。
 
 ---
 
-## 任务 A：旧数据盘点
+## 迁移范围（最终）
 
-在动手迁移前，先产出一份**数据清单**：`docs/05-migration/data-inventory.md`
+| 数据类别 | 旧位置 | 处理 | 理由 |
+|---|---|---|---|
+| 文章 | Supabase `posts`、`src/content/` | ❌ **不迁移** | Q2：全部不要，从零开始 |
+| 草稿 | Supabase `drafts` | ❌ 不迁移 | 新站无草稿概念 |
+| **评论** | Prisma SQLite `comments` | ❌ **不迁移** | 关联文章已不存在 |
+| **点赞** | Prisma SQLite `likes` | ❌ **不迁移** | 关联文章已不存在 |
+| 留言 | Prisma SQLite `guestbook` | ✅ **迁移** | 不依赖文章，独立存在 |
+| 友链 | Prisma SQLite `friend-links` | ✅ **迁移** | 独立存在 |
+| 项目 | Supabase `projects` / Prisma `projects` | ⚠️ **待定** | 见下方说明 |
+| 任务 | Supabase `tasks` | ✅ 迁移 | 独立存在 |
+| 日程 | Supabase `schedules` | ✅ 迁移 | 独立存在 |
+| 项目日志 | `project_logs` | ❌ 不迁移 | Q1：全删 |
+| 路线图 | `workflow_*` | ❌ 不迁移 | Q1：全删 |
+| 站点配置 | Prisma `siteconfig` | ✅ 迁移 | 独立存在 |
+| **经济规划** | Notion `Economy Plan`（私人） | 🚫 **禁止迁移** | Q3：只做脱敏公开版，原始金额永不入新库 |
 
-| 数据类别 | 旧位置 | 目标表 | 保留？ | 备注 |
-|---|---|---|---|---|
-| 文章 | Supabase `posts` + `src/content/` + Markdown | Notion | 待陈定 | 见 D3 |
-| 草稿 | Supabase `drafts` | **不迁移** | ❌ | 站点不再有草稿概念 |
-| 评论 | Prisma SQLite `comments` | Supabase `comments` | ✅ | 需字段映射 |
-| 点赞 | Prisma SQLite `likes` | Supabase `likes` | ✅ | 需按 post_id 重关联 |
-| 留言 | Prisma SQLite `guestbook` | Supabase `guestbook` | ✅ | 旧数据有 `email`，新模型无 |
-| 友链 | Prisma SQLite `friend-links` | Supabase `friend_links` | ✅ | |
-| 项目 | Supabase `projects` **与** Prisma `projects` 各一份 | Supabase `projects` | 待陈定 | 两套字段不一致，需比对 |
-| 任务 | Supabase `tasks` | Supabase `tasks` | 待陈定 | |
-| 日程 | Supabase `schedules` | Supabase `schedules` | 待陈定 | |
-| 项目日志 | `project_logs` | ? | 待陈定 | 目标模型未定义 |
-| 路线图 | `workflow_*` 多张表 | ? | 待陈定 | 目标模型未定义 |
-| 站点配置 | Prisma `siteconfig` | Supabase `site_config` | ✅ | |
+> **`projects` 表待定**：旧库有 Supabase 与 Prisma 两份，字段不一致。若陈仍需 `/projects` 页面，需先比对两份数据取并集；若不要该页面，一并删除。**执行前须向陈确认。**
 
-**要求**
+---
 
-1. 每类数据记录**迁移前行数**
-2. 每类数据给出**字段映射表**（旧字段 → 新字段 → 转换规则）
-3. 标记**无法映射**的字段，说明是丢弃还是保留在新字段
+## 任务 A：数据盘点（可先做）
+
+产出 `docs/05-migration/data-inventory.md`，逐表记录：
+
+| 项目 | 内容 |
+|---|---|
+| 旧表名 | |
+| 迁移前**行数** | |
+| 目标表 | 或「不迁移」+ 理由 |
+| 字段映射 | 旧字段 → 新字段 → 转换规则 |
+| 无法映射的字段 | 丢弃还是放新字段 |
+| 敏感字段 | 是否含 email / IP / 财务 |
+
+**必须覆盖上表所有类别**，包括「不迁移」的，理由要写清楚。
 
 ---
 
@@ -55,34 +76,30 @@
 
 | 要求 | 说明 |
 |---|---|
-| 导出格式 | JSON（结构化数据）+ Markdown（文章正文） |
+| 导出格式 | JSON |
 | 存放位置 | **仓库外**，如 `~/openblog-backup/2026-10-20/` |
-| 敏感字段 | 评论/留言的 `email`、IP 需单独标注，迁移时决定是否保留 |
+| 只导出需要的 | 只导留言、友链、任务、日程、配置、（可选）项目 |
 | 校验 | 每个文件生成 SHA-256 |
-
-> 🚨 **绝对不能提交进 Git**。理由见下方「安全要求」。
 
 ---
 
 ## 任务 C：执行迁移
 
-按 `data-inventory.md` 的映射表执行，**每张表一个脚本**：
-
 ```
 scripts/migrate/
-  01-comments.mjs
-  02-likes.mjs
-  03-guestbook.mjs
-  04-friend-links.mjs
-  05-projects.mjs
-  ...
+  01-guestbook.mjs
+  02-friend-links.mjs
+  03-tasks.mjs
+  04-schedules.mjs
+  05-site-config.mjs
+  06-projects.mjs        ← 仅当确认保留 /projects 页面
 ```
 
 **每个脚本必须**
 
-1. 可重复执行（幂等，用 `ON CONFLICT DO UPDATE` 或先清空再插入）
+1. 幂等（可重复执行，用 `ON CONFLICT DO UPDATE` 或先清空再插）
 2. 输出「迁移前 N 行 → 迁移后 M 行」
-3. 失败时回滚，不留半截数据
+3. 失败回滚
 
 ---
 
@@ -90,55 +107,43 @@ scripts/migrate/
 
 | 检查项 | 方法 |
 |---|---|
-| 行数一致 | 旧表行数 = 新表行数（或有明确说明的差异） |
-| 内容抽样 | 每类数据抽 5 条，人工比对字段 |
-| 关联完整 | 评论→文章、点赞→文章的 `post_id` 都能对上 |
-| 无孤儿数据 | `SELECT COUNT(*) FROM comments WHERE post_id NOT IN (...)` 为 0 |
+| 行数一致 | 旧表 = 新表（或有明确说明的差异） |
+| 内容抽样 | 每类抽 5 条比对 |
+| 无孤儿数据 | 外键/关联检查为 0 |
+| **确认没迁错** | 新库中**不得存在**文章、评论、点赞、财务数据 |
 
 ---
 
-## 🔒 安全要求（重要）
+## 🔒 安全要求
 
 ### 备份不得入库
 
-旧数据库可能包含：评论者邮箱、IP 地址、私人财务数据（经济规划）、未公开草稿。
-
-**因此**：
-
 | ✅ 仓库内允许 | ❌ 仓库内禁止 |
 |---|---|
-| 迁移清单（`data-inventory.md`） | 完整数据库导出（`.sql`、`.json` dump） |
-| 迁移前后行数记录 | `dev.db`、`*.sqlite` 文件 |
+| 迁移清单 `data-inventory.md` | 数据库导出（`.sql`、`.json` dump） |
+| 迁移前后行数 | `dev.db`、`*.sqlite` |
 | 校验哈希（SHA-256） | 含邮箱/IP 的原始数据 |
-| 脱敏后的验证记录 | `MIGRATION-BACKUP/` 整个目录 |
+| 脱敏验证记录 | `MIGRATION-BACKUP/` 整个目录 |
 
-**`.gitignore` 必须包含**（T-1 已要求）：
+`.gitignore` 必须含（T-1 已要求）：`MIGRATION-BACKUP/`、`EVIDENCE/`、`*.db`、`*.sqlite`、`backup/`
 
-```
-MIGRATION-BACKUP/
-EVIDENCE/
-*.db
-*.sqlite
-backup/
-```
+### 财务数据红线
 
-**校验和记录格式**（这个可以入库）：
-
-```markdown
-| 文件 | 行数 | SHA-256（前 16 位） | 导出时间 |
-|---|---|---|---|
-| comments.json | 1,234 | a3f8c2d1e9b4... | 2026-10-20 15:00 |
-```
+> 🚨 经济规划的**任何原始数字**（收入、存款、投资、支出、余额、备注）**不得**进入：
+> - Supabase 任何表
+> - 任何提交进 Git 的文件
+> - 任何日志输出
+>
+> 公开版只允许「百分比」「阶段名」「里程碑状态」，由 T5 单独设计数据源。
 
 ---
 
 ## 交付物
 
-- [ ] `docs/05-migration/data-inventory.md`（数据清单 + 字段映射）
-- [ ] `scripts/migrate/*.mjs`（每表一个，幂等）
-- [ ] 迁移校验报告（行数、抽样比对、孤儿数据检查）
-- [ ] `EVIDENCE/T1/` 下放迁移日志（**不入库**）
-- [ ] 校验和记录表（**入 `data-inventory.md`，可入库**）
+- [ ] `docs/05-migration/data-inventory.md`（含全部类别的结论，含「不迁移」的）
+- [ ] `scripts/migrate/*.mjs`（幂等）
+- [ ] 迁移校验报告
+- [ ] 校验和记录表（入库）
 
 ---
 
@@ -146,14 +151,14 @@ backup/
 
 | # | 检查项 | 方法 |
 |---|---|---|
-| D1 | 数据清单覆盖所有旧表 | 对照 `legacy-audit.md` 逐表确认 |
-| D2 | 字段映射表完整 | 每个旧字段都有「→ 新字段」或「丢弃原因」 |
-| D3 | 迁移脚本幂等 | 连续执行两次，第二次行数不变 |
-| D4 | 行数一致 | 迁移前后对照表 |
-| D5 | 无孤儿数据 | SQL 检查返回 0 |
-| D6 | 抽样内容一致 | 每类 5 条人工比对 |
-| D7 | **备份不在仓库内** | `git ls-files \| grep -E "backup\|\.db$\|dump"` 无结果 |
-| D8 | 校验和记录完整 | `data-inventory.md` 中有哈希表 |
+| D1 | 清单覆盖所有旧表 | 对照 `legacy-audit.md` 逐表确认 |
+| D2 | 每类都有明确结论 | 「迁移」或「不迁移 + 理由」 |
+| D3 | 脚本幂等 | 连跑两次行数不变 |
+| D4 | 行数一致 | 对照表 |
+| D5 | 抽样内容一致 | 每类 5 条 |
+| D6 | **无文章/评论/点赞残留** | 新库查这三类表 → 应为空或不存在 |
+| D7 | **无财务数据** | 全库搜索金额字段 → 无结果 |
+| D8 | 备份不在仓库内 | `git ls-files \| grep -E "backup\|\.db$\|dump"` 无结果 |
 
 ---
 
@@ -161,15 +166,14 @@ backup/
 
 **T-1 完成。**
 
-## 阻塞项（需陈拍板）
+## 执行前需确认
 
-| # | 事项 | 影响 |
+| # | 事项 | 谁 |
 |---|---|---|
-| 1 | `/roadmap`、`/project-logs/[id]`、`workflow_*` 表是否保留 | 决定这些表迁不迁 |
-| 2 | 历史文章是否全部迁入 Notion（D3） | 决定文章迁移路径 |
-| 3 | 旧评论/留言的 `email` 字段是否保留 | 涉及隐私合规 |
+| 1 | `/projects` 页面是否保留？（决定 `projects` 表迁不迁） | 陈 |
+| 2 | 旧留言的 `email` 字段是否保留？（隐私） | 陈 |
 
-> 这三项不明确，任务 C 无法开工。**任务 A（盘点）可以先做。**
+> 这两项不阻塞任务 A（盘点），但阻塞任务 C（执行迁移）。
 
 ---
 
@@ -177,10 +181,9 @@ backup/
 
 | 日期 | 状态变更 | 说明 |
 |---|---|---|
-| 2026-10-20 | 重写 | 原「瘦身删除」内容已作废，改为数据迁移 |
+| 2026-10-20 | 重写 | 依据 Q1/Q2/Q3 决策缩减范围 |
+| 2026-10-20 | 再缩减 | 文章不要 → 评论/点赞随之不迁 |
 
 ## 验收证据
-
-> 交付时在此粘贴：迁移前后行数对照、抽样比对结果、孤儿数据检查 SQL 输出。
 
 （待填）
