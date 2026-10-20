@@ -1,0 +1,56 @@
+# 依赖
+
+# Node
+node_modules/
+.pnp
+.pnp.js
+
+# 构建产物
+.next/
+out/
+build/
+dist/
+.vercel
+
+# 环境变量 —— 绝不提交
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# 数据库文件 —— 绝不提交
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# 备份与迁移数据
+MIGRATION-BACKUP/
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 系统
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# 测试与覆盖率
+coverage/
+.nyc_output/
+
+# 编辑器
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# 临时文件
+.tmp/
+tmp/
