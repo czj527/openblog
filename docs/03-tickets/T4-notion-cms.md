@@ -43,15 +43,16 @@ next.config.ts                     — 补 Notion 图片域名
 **要求**
 1. Notion API 版本固定 `2025-09-03`（data sources 抽象）
 2. 实现请求队列 + 429/529 处理：读 `Retry-After`，指数退避 + 抖动，重试上限 3 次
-3. 列表页/详情页/归档/标签/RSS/sitemap 全部走缓存（`revalidate = 3600`）
-4. 块渲染器支持 `02-目标架构与Notion-CMS设计.md` 第 5 节 P0 + P1 块类型
+3. 列表页/详情页/归档/标签/RSS/sitemap 全部走缓存（**Next.js 16 写法**：`'use cache'` + `cacheLife('hours')` + `cacheTag('posts')`，详见 `architecture.md` 4.3）
+4. 块渲染器支持 `docs/01-spec/architecture.md` 第 5 节 P0 + P1 块类型
 5. 必须处理嵌套块（递归深度上限 10）与分页（`has_more`）
-6. 图片走 `next/image`，`remotePatterns` 补 `www.notion.so`、`s3.us-west-2.amazonaws.com`、`prod-files-secure.s3.us-west-2.amazonaws.com`
-7. **URL 结构不得变化** —— `/blog/[slug]` 的 slug 由 Notion `Slug` 字段控制
-8. 实现 `/api/revalidate`：校验 `REVALIDATE_SECRET`，调 `revalidateTag('posts')`
+6. 图片走 **`/api/notion-image/[blockId]` 代理**（Notion 图片 URL 会过期，详见 `architecture.md` 4.5）；`remotePatterns` 补 `www.notion.so`、`prod-files-secure.s3.us-west-2.amazonaws.com`，不得用通配符
+7. **URL 结构不得变化** —— `/blog/[slug]` 的 slug 由 Notion `Slug` 字段控制；已发布 slug 默认不可改，确需改保留 301/alias
+8. 实现 `/api/revalidate`：**按 `architecture.md` 4.4 校验 Webhook 签名**（原始 body + HMAC-SHA256 + `timingSafeEqual`），通过后调 **`revalidateTag('posts', 'max')`**（Next.js 16 必须带 cacheLife profile），失败返回 401 且不做失效
+9. 实现**三层兜底**：`cacheLife('hours')` 自然过期 + `/api/cron/refresh` 定时失效 + 管理员手动触发（详见 `architecture.md` 4.4）
 
 **前置条件（陈需先做）**
-1. Notion 建「Blog Posts」库，按 `02` 文档第 3.1 节建全部属性
+1. Notion 建「Blog Posts」库，按 `docs/01-spec/architecture.md` 3.1 节建全部属性
 2. 建 Integration（https://www.notion.so/my-integrations），拿到 token
 3. 把 Blog Posts 库 **Connect** 到这个 Integration
 4. 提供 `Data Source ID`（不是 Database ID —— 2025-09-03 版本用 data source）
@@ -61,7 +62,7 @@ next.config.ts                     — 补 Notion 图片域名
 - 上述代码
 - `.env.example`（列出所需变量，不含真实值）
 - Notion 库结构截图（供陈核对）
-- 缓存策略说明（写在 `SECURITY.md` 或新建 `ARCHITECTURE.md`）
+- 缓存策略说明（写在 `SECURITY.md` 或新建 `docs/01-spec/architecture.md`）
 
 **验收标准**
 - [ ] `/blog` 列表显示 Notion 文章，排序按 `Published At` desc

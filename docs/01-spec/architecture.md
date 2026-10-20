@@ -128,7 +128,7 @@ Notion API: query data source（filter Status=Published, sort Published At desc�
   ↓
 映射为内部 Post 类型
   ↓
-写入 Next.js 缓存（unstable_cache / revalidate tag: 'posts'）
+写入 Next.js 缓存（`'use cache'` 指令 + `cacheTag('posts')`）
   ↓
 返回
 ```
@@ -151,13 +151,27 @@ Notion API: retrieve block children（分页拉全量，递归处理嵌套块）
 
 ### 4.3 缓存与失效策略
 
-| 场景 | 策略 |
+> ⚠️ **Next.js 16 缓存模型已变，本文档统一使用新写法。**
+> `unstable_cache` 在 Next.js 16 **已废弃**，官方建议改用 `'use cache'` 指令；
+> `revalidateTag(tag)` 单参数写法**在 16 中不再工作**，必须传 cacheLife profile：`revalidateTag(tag, 'max')`。
+> 依据：[unstable_cache 文档](https://nextjs.org/docs/app/api-reference/functions/unstable_cache)、[revalidateTag 文档](https://nextjs.org/docs/app/api-reference/functions/revalidateTag)。
+
+| 场景 | 策略 | 具体写法 |
+|---|---|---|
+| 列表页 | 缓存组件 + 定时过期 | `'use cache'` + `cacheLife('hours')` + `cacheTag('posts')` |
+| 详情页 | 同上，按需失效 | `'use cache'` + `cacheLife('hours')` + `cacheTag('posts', 'post:'+id)` |
+| 标签/归档页 | 同上 | `'use cache'` + `cacheTag('posts')` |
+| RSS / sitemap | 同上 | `'use cache'` + `cacheTag('posts')` |
+| **立即更新** | Notion Webhook → `/api/revalidate` → `revalidateTag('posts', 'max')` | 见 4.4 |
+
+**统一约定（不得混用新旧 API）**
+
+| ✅ 本项目使用 | ❌ 禁止出现 |
 |---|---|
-| 列表页 | ISR，`revalidate = 3600`（1 小时） |
-| 详情页 | ISR，`revalidate = 3600` + 按需失效 |
-| 标签/归档页 | ISR，`revalidate = 3600` |
-| RSS / sitemap | ISR，`revalidate = 3600` |
-| **立即更新** | Notion Webhook → `/api/revalidate` → `revalidateTag('posts')` |
+| `'use cache'` 指令 | `unstable_cache(...)` |
+| `cacheTag('posts')` | — |
+| `cacheLife('hours')` | `export const revalidate = 3600`（与 use cache 混用时语义冲突） |
+| `revalidateTag('posts', 'max')` | `revalidateTag('posts')`（单参数，Next.js 16 不工作） |
 
 **为什么必须缓存**：Notion API 速率限制为**每分钟 180 次请求（平均 3 次/秒）**（Free/Plus 计划），Business/Enterprise 才 600 次/分钟。每次文章详情渲染可能需要多次 block 请求 —— 不缓存会很快触发 429。
 
@@ -166,6 +180,57 @@ Notion API: retrieve block children（分页拉全量，递归处理嵌套块）
 - 重试采用指数退避 + 抖动，并设置重试上限
 - 只重试 429 / 529（以及幂等请求的 500/502/503/504），400/401/403 不重试
 - 参考：https://developers.notion.com/reference/request-limits
+
+### 4.4 Webhook 设计与兜底（评审补充项）
+
+> 原方案只写了「Webhook → `/api/revalidate`」，缺少验证与兜底。**没有兜底的 Webhook 不能上线**：Webhook 丢了就永远不更新。
+
+**验证流程（`/api/revalidate`）**
+
+| 步骤 | 要求 |
+|---|---|
+| 1 | 读取原始 body（**不要先 `JSON.parse`**，签名基于原始字节） |
+| 2 | 用 `NOTION_WEBHOOK_SECRET` 计算 HMAC-SHA256，与请求头签名比对 |
+| 3 | 用 `timingSafeEqual` 比较，防时序攻击 |
+| 4 | 校验不通过 → **401，不做任何失效操作** |
+| 5 | 通过后只做「失效」，**不在此路径里同步拉取 Notion**（避免超时） |
+
+**首次订阅验证**：Notion 订阅 Webhook 时会发一个 `verification_token` 事件，需在管理界面回填该 token，之后才推送正式事件。这一步必须记录在 T4 的验收证据里。
+
+**兜底策略（Webhook 失败时）**
+
+| 机制 | 配置 | 作用 |
+|---|---|---|
+| 兜底 1 | `cacheLife('hours')` | Webhook 全挂，最多 1 小时后自动过期重取 |
+| 兜底 2 | `/api/cron/refresh` + Vercel Cron（如可用） | 定时主动失效，间隔 6 小时 |
+| 兜底 3 | 手动失效接口（需管理员会话） | 出问题时人工触发 |
+
+**验收口径**：同步是「**最终一致**」，不是「1 分钟内一定完成」。
+
+- Webhook 正常：秒级到分钟级
+- Webhook 失败：≤ 1 小时（缓存自然过期）
+- 验收时**记录实际延迟**，不承诺固定上限
+
+### 4.5 Notion 图片处理（评审补充项）
+
+> ⚠️ **Notion 托管的图片 URL 是临时签名链接，会过期**（通常 1 小时量级）。
+> 只配置 `next/image` 的 `remotePatterns` 是**不够的** —— 过期后全站图片 404。
+
+**方案（按优先级）**
+
+| 方案 | 做法 | 取舍 |
+|---|---|---|
+| A. 代理 + 实时刷新（推荐） | 存 `block_id` 而非 URL；渲染时经 `/api/notion-image/[blockId]` 代理，代理内部**每次重新查 Notion 拿最新 URL** 并 302 或流式转发 | 图片永远新鲜；多一次 API 调用（有缓存兜底） |
+| B. 构建时转存 | 构建阶段把图片下载到 `public/` 或对象存储 | 快、稳；但 Notion 改图需重新构建 |
+| C. 直连 + 定期刷新 | 缓存 URL 并在过期前刷新 | 实现复杂，容易漏 |
+
+**本项目的选择**：**方案 A**。理由：写作在 Notion，改图频率不低，不想每次改图都触发构建。
+
+**要求**
+
+- 代理接口必须校验 `blockId` 格式，防止 SSRF（**不要**接受任意 URL 参数）
+- 代理需设置 `Cache-Control: public, max-age=..., stale-while-revalidate=...`
+- `next.config.ts` 的 `images.remotePatterns` 只放 Notion 官方域（`*.notion.so`、`prod-files-secure.s3.*.amazonaws.com`），**不要用通配符 `**`**
 
 ---
 
@@ -240,7 +305,7 @@ Notion API: retrieve block children（分页拉全量，递归处理嵌套块）
 | Notion 客户端 | 官方 `@notionhq/client` | 稳定、类型完整、自带重试 |
 | Notion API 版本 | `2025-09-03` | 当前版本，databases 已抽象为 **data sources**（`query-data-source`），旧版 `query-database` 将被淘汰 |
 | 渲染方式 | 分层：`notion-to-md` 产 MDX **或** 自建 Block → React 渲染器 | 优先自建渲染器（可控性强、可注入现有 shadcn 组件）；若时间紧张先用 `notion-to-md` + 现有 `react-markdown` 链路 |
-| 缓存层 | Next.js `unstable_cache` + `revalidateTag` | 零额外依赖 |
+| 缓存层 | Next.js 16 `'use cache'` + `cacheTag`/`cacheLife` | 零额外依赖，官方推荐写法 |
 | 鉴权 | HMAC 签名 token（详见 `docs/01-spec/auth.md`） | 无状态、无需建表、够安全 |
 
 ---

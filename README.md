@@ -20,7 +20,10 @@
 6. [`docs/03-tickets/`](./docs/03-tickets/) —— 计划修订完成后按更新后的工单执行
 7. [`docs/04-acceptance/checklist.md`](./docs/04-acceptance/checklist.md) —— 交付前自检
 
-**当前不要直接执行旧版 T0/T1。** 先按评审文档完成 M0/M1 和工单修订，再开始项目初始化。
+**执行顺序：T-1 → T0 → T1 → T2 → T3 → T4 → T5 → T6**
+
+> ⚠️ 工单已于 2026-10-20 按计划评审修订完成。原来的 T0/T1 指向 `portfolio` 路径，在 openblog 里不存在，已重写。
+> 最新变化见 [`docs/06-review/2026-10-20-plan-review.md`](./docs/06-review/2026-10-20-plan-review.md)。
 
 ---
 
@@ -37,8 +40,9 @@
 │   ├── 02-contracts/               【契约层】不可违反
 │   │   └── design-system.md        视觉基线
 │   ├── 03-tickets/                 【执行层】可变、可作废、可重开
-│   │   ├── T0-security.md
-│   │   ├── T1-slimming.md
+│   │   ├── T-1-bootstrap.md        ⭐ 项目初始化 + 白名单迁移（第一个做）
+│   │   ├── T0-security.md          安全基线（鉴权/限流/环境变量）
+│   │   ├── T1-data-migration.md    旧数据盘点与迁移
 │   │   ├── T2-data-layer.md
 │   │   ├── T3-permissions.md
 │   │   ├── T4-notion-cms.md
