@@ -13,7 +13,8 @@
 | 样式 | Tailwind CSS v4 (oklch 颜色空间) |
 | 动画 | Framer Motion |
 | 图标 | Lucide React |
-| 富文本 | Tiptap Editor (博客编辑) / react-markdown (渲染) |
+| 内容编辑 | Notion |
+| 正文渲染 | Notion Block → React 渲染器 |
 | 部署 | Vercel (自动部署) |
 
 ## 颜色体系

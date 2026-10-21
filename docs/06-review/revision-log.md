@@ -50,13 +50,13 @@
 
 ### 🔧 7. Notion API 版本需要重新核对
 
-**部分采纳 —— 版本判断有误，子问题成立。**
+**部分采纳 —— 原记录中的版本判断已被 2026-10-21 官方文档复核覆盖，Webhook 子问题成立。**
 
-- ❌ **版本无需改**：经查 Notion 官方文档，`2025-09-03` **就是当前正式版本**，data sources 正是在该版本引入。
-  依据：[Notion Data source 文档](https://developers.notion.com/reference/data-source)、[2025-09-03 升级 FAQ](https://developers.notion.com/guides/get-started/upgrade-faqs-2025-09-03)
+- ✅ **版本已更新**：当前实施基线改为 `2026-03-11`；`2025-09-03` 保留为 data source 语义引入版本。实现前仍需核对官方 changelog 与 SDK 支持。
+  依据：[Notion API 版本文档](https://developers.notion.com/reference/versioning)、[Notion Data source 文档](https://developers.notion.com/reference/data-source)
 - ✅ **子问题全部采纳并补齐**：`architecture.md` 新增 **4.4 Webhook 设计与兜底**、**4.5 Notion 图片处理**
   - Webhook 签名校验（原始 body + HMAC + timingSafeEqual）
-  - 首次订阅 `verification_token` 回填流程
+  - 首次订阅 `verification_token` 回填流程；握手请求与后续事件的具体签名处理遵循官方文档和 SDK
   - Webhook 失败的 3 层兜底（cacheLife / Cron / 手动）
   - 同步验收口径改为「最终一致」，不承诺固定时间
   - 图片 URL 过期的代理方案（存 block_id，实时刷新）
@@ -154,3 +154,11 @@
 | `TASKS.md` | 重写（D1 移出、状态分离、Q1-Q3） |
 | `docs/06-review/2026-10-20-plan-review.md` | 加修订状态说明 |
 | `docs/06-review/revision-log.md` | **新增**（本文件） |
+
+## 后续决策覆盖说明（2026-10-21）
+
+本修订记录保留历史处理过程；以下内容覆盖其中仍出现的旧结论：
+
+- 经济页当前采用**脱敏后公开**，不是“完全私有”。公开站点只读取独立的 `Economy Public` 数据源。
+- 历史文章、旧评论、旧点赞全部不迁移；`src/content/` 只读参考。
+- 当前工单顺序为 `T-1 → T0 → T1 → T2 → T3 → T4 → T5 → T6`，只有 T-1 可为 `待开工`，其余依赖未满足工单标为 `已阻塞`。

@@ -1,6 +1,6 @@
 # T4 · Notion CMS 接入
 
-> 状态：`待开工`
+> 状态：`已阻塞`
 > 负责人：开发 Agent
 > 验收人：陈
 > 所属项目：openblog
@@ -41,21 +41,21 @@ next.config.ts                     — 补 Notion 图片域名
 ```
 
 **要求**
-1. Notion API 版本固定 `2025-09-03`（data sources 抽象）
+1. `Notion-Version` 请求头实施基线固定为 `2026-03-11`；`2025-09-03` 仅作为 data source 语义引入版本记录，实现前核对官方 changelog 与 `@notionhq/client` SDK 支持
 2. 实现请求队列 + 429/529 处理：读 `Retry-After`，指数退避 + 抖动，重试上限 3 次
 3. 列表页/详情页/归档/标签/RSS/sitemap 全部走缓存（**Next.js 16 写法**：`'use cache'` + `cacheLife('hours')` + `cacheTag('posts')`，详见 `architecture.md` 4.3）
 4. 块渲染器支持 `docs/01-spec/architecture.md` 第 5 节 P0 + P1 块类型
 5. 必须处理嵌套块（递归深度上限 10）与分页（`has_more`）
 6. 图片走 **`/api/notion-image/[blockId]` 代理**（Notion 图片 URL 会过期，详见 `architecture.md` 4.5）；`remotePatterns` 补 `www.notion.so`、`prod-files-secure.s3.us-west-2.amazonaws.com`，不得用通配符
 7. **URL 结构不得变化** —— `/blog/[slug]` 的 slug 由 Notion `Slug` 字段控制；已发布 slug 默认不可改，确需改保留 301/alias
-8. 实现 `/api/revalidate`：**按 `architecture.md` 4.4 校验 Webhook 签名**（原始 body + HMAC-SHA256 + `timingSafeEqual`），通过后调 **`revalidateTag('posts', 'max')`**（Next.js 16 必须带 cacheLife profile），失败返回 401 且不做失效
+8. 实现 `/api/revalidate`：首次订阅请求只处理 `verification_token`，通过受限运维流程安全取得 token 并返回 200，不触发失效；后续请求读取原始 body，按 Notion 官方流程校验 `X-Notion-Signature`（`NOTION_WEBHOOK_VERIFICATION_TOKEN` + HMAC-SHA256 + `timingSafeEqual`），通过后调 **`revalidateTag('posts', 'max')`**，失败返回 401 且不做失效；保存初始 `verification_token` 并记录订阅 Verify/轮换证据
 9. 实现**三层兜底**：`cacheLife('hours')` 自然过期 + `/api/cron/refresh` 定时失效 + 管理员手动触发（详见 `architecture.md` 4.4）
 
 **前置条件（陈需先做）**
 1. Notion 建「Blog Posts」库，按 `docs/01-spec/architecture.md` 3.1 节建全部属性
 2. 建 Integration（https://www.notion.so/my-integrations），拿到 token
 3. 把 Blog Posts 库 **Connect** 到这个 Integration
-4. 提供 `Data Source ID`（不是 Database ID —— 2025-09-03 版本用 data source）
+4. 提供 `Data Source ID`（使用 data source 查询入口）
 5. 把现有文章录入 Notion（至少 1 篇用于测试）
 
 **交付物**
@@ -69,11 +69,11 @@ next.config.ts                     — 补 Notion 图片域名
 - [ ] `/blog/[slug]` 正文正常渲染（标题、段落、代码、图片、引用、列表、表格）
 - [ ] 代码块有语法高亮
 - [ ] 图片正常显示（含 caption）
-- [ ] 在 Notion 改文章 → Webhook 触发 → 1 分钟内站点更新
+- [ ] 在 Notion 改文章 → Webhook 触发 → 记录实际最终一致延迟；Webhook 失败时缓存自然过期或 Cron 仍能恢复
 - [ ] 触发 429 时有重试日志，最终成功
-- [ ] `revalidate = 3600` 生效（连续请求不重复打 Notion API，看日志验证）
+- [ ] `'use cache'`、`cacheLife`、`cacheTag` 生效（连续请求不重复打 Notion API，看日志验证）
 - [ ] `/rss.xml`、`/sitemap.xml` 包含新文章
-- [ ] 所有已有 URL 200（URL 对照表逐项 curl）
+- [ ] 所有“保留 URL”返回 200；删除页面与未迁移历史文章按对照表返回预期结果
 - [ ] 视觉风格与改造前一致（陈验收）
 
 **依赖**：T3 完成 + 陈完成 Notion 侧准备。
@@ -86,7 +86,7 @@ next.config.ts                     — 补 Notion 图片域名
 
 | 日期 | 状态变更 | 说明 |
 |---|---|---|
-| — | 待开工 | — |
+| — | 待开工（历史记录） | 当前状态已更新为 `已阻塞`，等待 T3 完成与 Notion 侧准备 |
 
 ## 验收证据
 

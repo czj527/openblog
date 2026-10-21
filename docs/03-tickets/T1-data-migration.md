@@ -1,6 +1,6 @@
 # T1 · 存量数据迁移（大幅缩减版）
 
-> 状态：`待开工`
+> 状态：`已阻塞`
 > 负责人：开发 Agent
 > 验收人：陈
 > 所属项目：**openblog**
@@ -43,7 +43,7 @@
 | **点赞** | Prisma SQLite `likes` | ❌ **不迁移** | 关联文章已不存在 |
 | 留言 | Prisma SQLite `guestbook` | ✅ **迁移** | 不依赖文章，独立存在 |
 | 友链 | Prisma SQLite `friend-links` | ✅ **迁移** | 独立存在 |
-| 项目 | Supabase `projects` / Prisma `projects` | ⚠️ **待定** | 见下方说明 |
+| 项目 | Supabase `projects` / Prisma `projects` | ✅ **迁移** | 以 Supabase `projects` 为权威来源；Prisma 重复表只做盘点，不双写 |
 | 任务 | Supabase `tasks` | ✅ 迁移 | 独立存在 |
 | 日程 | Supabase `schedules` | ✅ 迁移 | 独立存在 |
 | 项目日志 | `project_logs` | ❌ 不迁移 | Q1：全删 |
@@ -51,7 +51,7 @@
 | 站点配置 | Prisma `siteconfig` | ✅ 迁移 | 独立存在 |
 | **经济规划** | Notion `Economy Plan`（私人） | 🚫 **禁止迁移** | Q3：只做脱敏公开版，原始金额永不入新库 |
 
-> **`projects` 表待定**：旧库有 Supabase 与 Prisma 两份，字段不一致。若陈仍需 `/projects` 页面，需先比对两份数据取并集；若不要该页面，一并删除。**执行前须向陈确认。**
+> **`projects` 迁移规则已冻结**：保留 `/projects` 页面，Supabase `projects` 是唯一权威来源；Prisma `projects` 只用于差异盘点，不能自动取并集或双写。无法映射的字段记录为丢弃项并由陈验收。
 
 ---
 
@@ -66,7 +66,7 @@
 | 目标表 | 或「不迁移」+ 理由 |
 | 字段映射 | 旧字段 → 新字段 → 转换规则 |
 | 无法映射的字段 | 丢弃还是放新字段 |
-| 敏感字段 | 是否含 email / IP / 财务 |
+| 敏感字段 | 是否含 email / IP / 财务；旧留言 `email` 不进入新模型 |
 
 **必须覆盖上表所有类别**，包括「不迁移」的，理由要写清楚。
 
@@ -78,7 +78,7 @@
 |---|---|
 | 导出格式 | JSON |
 | 存放位置 | **仓库外**，如 `~/openblog-backup/2026-10-20/` |
-| 只导出需要的 | 只导留言、友链、任务、日程、配置、（可选）项目 |
+| 只导出需要的 | 只导留言、友链、任务、日程、配置、项目 |
 | 校验 | 每个文件生成 SHA-256 |
 
 ---
@@ -92,7 +92,7 @@ scripts/migrate/
   03-tasks.mjs
   04-schedules.mjs
   05-site-config.mjs
-  06-projects.mjs        ← 仅当确认保留 /projects 页面
+  06-projects.mjs        ← /projects 保留，使用 Supabase 作为权威来源
 ```
 
 **每个脚本必须**
@@ -170,10 +170,10 @@ scripts/migrate/
 
 | # | 事项 | 谁 |
 |---|---|---|
-| 1 | `/projects` 页面是否保留？（决定 `projects` 表迁不迁） | 陈 |
-| 2 | 旧留言的 `email` 字段是否保留？（隐私） | 陈 |
+| 1 | 核对 Supabase 与 Prisma `projects` 字段差异，并确认无法映射字段 | 开发 Agent + 陈验收 |
+| 2 | 旧留言 `email` 字段丢弃，不迁入公开留言模型 | 已确认 |
 
-> 这两项不阻塞任务 A（盘点），但阻塞任务 C（执行迁移）。
+> 字段差异盘点不阻塞任务 A；任务 C 必须按上述权威来源和脱敏规则执行。
 
 ---
 

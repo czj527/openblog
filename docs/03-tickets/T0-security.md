@@ -1,6 +1,6 @@
 # T0 · 安全基线（在 openblog 实现，不修 portfolio）
 
-> 状态：`待开工`
+> 状态：`已阻塞`
 > 负责人：开发 Agent
 > 验收人：陈
 > 所属项目：**openblog**
@@ -82,18 +82,19 @@
   NEXT_PUBLIC_SUPABASE_ANON_KEY
   SUPABASE_SERVICE_ROLE_KEY
 
-可选变量（缺失只警告）：
-  NOTION_TOKEN
-  NOTION_BLOG_DATA_SOURCE_ID
-  NOTION_ECONOMY_PUBLIC_DATA_SOURCE_ID
-  NOTION_WEBHOOK_SECRET
+阶段性变量（在对应工单开始或启用功能前必须配置）：
+  T4 前：NOTION_TOKEN、NOTION_BLOG_DATA_SOURCE_ID、NOTION_WEBHOOK_VERIFICATION_TOKEN
+  T5 上线前：NOTION_ECONOMY_PUBLIC_DATA_SOURCE_ID
 
 禁止出现的变量（配置了直接报错退出）：
+  NOTION_ECONOMY_PRIVATE_DATA_SOURCE_ID
   NOTION_ECONOMY_DATA_SOURCE_ID      ← 旧名，指向私人经济库，会导致财务数据公开
+  NOTION_WEBHOOK_SECRET              ← 已废弃的旧变量名
+  NOTION_WEBHOOK_SIGNING_SECRET      ← Notion 不提供独立 signing secret
 ```
 
 > ⚠️ 「禁止变量」是主动防御：避免有人图省事把私人 Notion 库 ID 配进来。
-> 该规则必须在 `check-env.mjs` 里实现，并在 T5 验收（S20）中验证。
+> 该规则必须在 `check-env.mjs` 里实现，并在 T5 验收（S20）中验证。阶段性变量在功能启用前按对应工单转为必需变量。
 
 **要求**：错误信息只说明「哪个变量缺失」，**不得打印变量值**。
 
@@ -137,22 +138,22 @@ node scripts/hash-password.mjs
 
 ## 验收标准
 
-> 对应 `docs/04-acceptance/checklist.md` 的 **S1–S12**
+> 本工单使用内部编号 `T0-1` 至 `T0-12`；全局验收编号仍以 `docs/04-acceptance/checklist.md` 为准。
 
 | # | 检查项 | 验证方法 |
 |---|---|---|
-| S1 | 伪造 cookie 被拒 | 手工构造 `admin:xxx` cookie，请求后台应 401 |
-| S2 | 过期 token 被拒 | 构造 `exp` 已过的 token，应 401 |
-| S3 | 篡改签名被拒 | 改 token 任一字节，应 401 |
-| S4 | 正确密码可登录 | 浏览器实测 |
-| S5 | 无硬编码默认密码 | `grep -rn "admin123\|password.*=.*['\"]" src/` 无命中 |
-| S6 | 缺 `AUTH_SECRET` 启动报错 | 删除环境变量后 `pnpm build` 或 `pnpm dev` 应失败并提示变量名 |
-| S7 | 缺 `ADMIN_PASSWORD_HASH` 启动报错 | 同上 |
-| S8 | 无通用代理接口 | `ls src/app/api/supabase` 不存在 |
-| S9 | 登录限流生效 | 连续 6 次错误密码，第 6 次返回 429 |
-| S10 | service_role key 不泄漏到客户端 | `grep -r "SERVICE_ROLE" .next/static/` 无结果 |
-| S11 | Cookie 属性正确 | DevTools 检查 `HttpOnly`、`Secure`、`SameSite=Lax` |
-| S12 | 陈能正常登录后台 | 陈亲自验收 |
+| T0-1 | 伪造 cookie 被拒 | 手工构造 `admin:xxx` cookie，请求后台应 401 |
+| T0-2 | 过期 token 被拒 | 构造 `exp` 已过的 token，应 401 |
+| T0-3 | 篡改签名被拒 | 改 token 任一字节，应 401 |
+| T0-4 | 正确密码可登录 | 浏览器实测 |
+| T0-5 | 无硬编码默认密码 | `grep -rn "admin123\|password.*=.*['\"]" src/` 无命中 |
+| T0-6 | 缺 `AUTH_SECRET` 启动报错 | 删除环境变量后 `pnpm build` 或 `pnpm dev` 应失败并提示变量名 |
+| T0-7 | 缺 `ADMIN_PASSWORD_HASH` 启动报错 | 同上 |
+| T0-8 | 无通用代理接口 | `ls src/app/api/supabase` 不存在 |
+| T0-9 | 登录限流生效 | 连续 6 次错误密码，第 6 次返回 429 |
+| T0-10 | service_role key 不泄漏到客户端 | `grep -r "SERVICE_ROLE" .next/static/` 无结果 |
+| T0-11 | Cookie 属性正确 | DevTools 检查 `HttpOnly`、`Secure`、`SameSite=Lax` |
+| T0-12 | 陈能正常登录后台 | 陈亲自验收 |
 
 ---
 
@@ -176,7 +177,7 @@ node scripts/hash-password.mjs
 
 | 日期 | 状态变更 | 说明 |
 |---|---|---|
-| — | 待开工 | 等待 T-1 完成 |
+| — | 待开工（历史记录） | 等待 T-1 完成；当前状态已更新为 `已阻塞` |
 
 ## 验收证据
 

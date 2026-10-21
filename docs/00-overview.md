@@ -29,7 +29,7 @@
 - ❌ 不在站点内做文章编辑器（写作在 Notion 里完成）
 - ❌ 不做多语言（`Lang` 字段预留，不实现切换）
 - ❌ 不做全文搜索（内容量起来后再评估）
-- ❌ 不改动任何视觉令牌（颜色、圆角、字体、动画）
+- ✅ 默认遵循 `portfolio origin/main` 与 `docs/02-contracts/design-system.md`；经陈批准后可调整视觉方案，并同步更新契约和验收项
 - ❌ 不迁移到 WordPress
 
 ---
@@ -44,7 +44,7 @@
 | 样式 | Tailwind CSS v4（oklch） | **保留** |
 | 动画 | Framer Motion | **保留** |
 | 图标 | Lucide React | |
-| 内容源 | **Notion API**（data sources, `2025-09-03`） | 文章、草稿、经济规划 |
+| 内容源 | **Notion API**（实施版本 `2026-03-11`；data source 语义自 `2025-09-03` 引入） | 文章、草稿、经济规划 |
 | 互动数据 | **Supabase Postgres** | 评论、点赞、留言、友链、个人管理 |
 | 部署 | Vercel | |
 
@@ -105,7 +105,7 @@
 | `docs/00-overview.md` | 本文档 · 项目总览 |
 | `docs/01-spec/architecture.md` | 目标架构、数据模型、Notion 库设计、缓存策略 |
 | `docs/01-spec/auth.md` | 权限边界、鉴权方案、安全验收 |
-| `docs/02-contracts/design-system.md` | 视觉基线（**不可修改**） |
+| `docs/02-contracts/design-system.md` | 视觉基线（默认遵循，偏离需陈批准） |
 | `docs/03-tickets/` | 工单（按 T0→T6 顺序执行） |
 | `docs/04-acceptance/checklist.md` | 验收清单（陈主用） |
 | `docs/05-migration/legacy-audit.md` | 旧项目审计（迁移对照） |

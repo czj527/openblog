@@ -1,6 +1,6 @@
 # T3 · 权限重构（完整落地）
 
-> 状态：`待开工`
+> 状态：`已阻塞`
 > 负责人：开发 Agent
 > 验收人：陈
 > 所属项目：openblog
@@ -31,8 +31,8 @@
 
 | 类别 | 接口 | 权限 | 写入方式 |
 |---|---|---|---|
-| **公开写入** | `POST /api/comments`<br>`POST /api/likes`<br>`POST /api/guestbook`<br>`POST /api/friend-links` | **不需要登录** | 经 API Route 校验后，用 **service role** 写入 |
-| **管理员写入** | `PATCH/DELETE /api/comments/[id]`<br>`DELETE /api/guestbook/[id]`<br>`PATCH/DELETE /api/friend-links/*`<br>`* /api/tasks`、`/api/schedules`、`/api/projects` | **必须 `verifyAdmin`** | service role |
+| **公开写入** | `POST /api/comments`<br>`POST /api/likes`<br>`POST /api/guestbook` | **不需要登录** | 经 API Route 校验后，用 **service role** 写入 |
+| **管理员写入** | `PATCH/DELETE /api/comments/[id]`<br>`DELETE /api/guestbook/[id]`<br>`POST/PUT/DELETE /api/friend-links`<br>`* /api/tasks`、`/api/schedules`、`/api/projects` | **必须 `verifyAdmin`** | service role |
 | **公开读取** | `GET /api/comments`、`GET /api/posts` 等 | 匿名可读 | anon key 或 service role |
 
 **核心规则**
@@ -41,7 +41,7 @@
 2. 所有写操作（含匿名评论）**必须经过 API Route**，不直连数据库
 3. Supabase 的 anon 角色**不开放** comments/likes/guestbook 的 INSERT 权限
 4. API Route 内部用 service role 写入，负责：输入校验、HTML 清洗、限流、设置审核状态
-5. 只有管理员专属资源才校验 `verifyAdmin`
+5. 只有管理员专属资源才校验 `verifyAdmin`；友链属于管理员资源，不开放公开 POST
 
 ### 其他要求
 
@@ -51,7 +51,7 @@
 - 错误响应不泄露内部信息（不返回 SQL、堆栈、表名）
 
 **验收标准**
-- 对应 `docs/04-acceptance/checklist.md` 安全项 S1-S12、S21 全部通过
+- 对应 `docs/04-acceptance/checklist.md` 中由 T3 负责的安全项 **S7、S10、S13、S14、S16、S17** 全部通过；S21 由 T2 验收，其他全局项按各自 Phase 验收
 - 新增专项：
   - [ ] 匿名 `POST /api/tasks` → 401
   - [ ] 匿名 `DELETE /api/comments/xxx` → 401
@@ -71,7 +71,7 @@
 
 | 日期 | 状态变更 | 说明 |
 |---|---|---|
-| — | 待开工 | — |
+| — | 待开工（历史记录） | 当前状态已更新为 `已阻塞`，等待 T2 完成 |
 
 ## 验收证据
 

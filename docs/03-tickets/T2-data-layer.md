@@ -1,6 +1,6 @@
 # T2 · 数据层统一（Prisma → Supabase）
 
-> 状态：`待开工`
+> 状态：`已阻塞`
 > 负责人：开发 Agent
 > 验收人：陈
 > 所属项目：openblog
@@ -13,7 +13,7 @@
 
 **范围**
 - 新建 Supabase 表：`comments`、`likes`、`guestbook`、`friend_links`、`site_config`（若不存在）
-- 数据迁移：Prisma SQLite → Supabase（评论、点赞、留言、友链、配置、projects）
+- 数据迁移：按 T1 结论迁移留言、友链、配置、projects、tasks、schedules；评论和点赞从零开始，不迁移旧数据
 - 改造所有 `getPrisma()` 调用点
 - `src/lib/supabase.ts` → 补类型定义、分层（server/client）
 - 删除所有 Prisma 相关代码（若 T1 未删尽）
@@ -82,8 +82,8 @@ id uuid PK, key text UNIQUE NOT NULL, value text NOT NULL
 - RLS 策略清单
 
 **验收标准**
-- [ ] 所有表在 Supabase 存在，行数与迁移前一致（±0）
-- [ ] 评论/留言/友链/项目页数据正常显示
+- [ ] 迁移表在 Supabase 存在，行数与迁移前一致（±0）；评论和点赞表从空库开始
+- [ ] 留言/友链/项目页数据正常显示，评论和点赞功能可在新站写入
 - [ ] 全局无 `getPrisma` 引用
 - [ ] 无 `dev.db`、无 `DATABASE_URL` 环境变量
 - [ ] RLS 生效：用 anon key **写** comments/guestbook → **被拒绝**
@@ -102,7 +102,7 @@ id uuid PK, key text UNIQUE NOT NULL, value text NOT NULL
 
 | 日期 | 状态变更 | 说明 |
 |---|---|---|
-| — | 待开工 | — |
+| — | 待开工（历史记录） | 当前状态已更新为 `已阻塞`，等待 T1 完成 |
 
 ## 验收证据
 

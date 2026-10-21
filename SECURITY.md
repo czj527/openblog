@@ -11,7 +11,7 @@
 | `NOTION_TOKEN` | Notion 集成密钥 | 仅服务端 |
 | `NOTION_BLOG_DATA_SOURCE_ID` | 文章库 | 仅服务端 |
 | `NOTION_ECONOMY_PUBLIC_DATA_SOURCE_ID` | **公开脱敏**经济库 | 仅服务端 |
-| `NOTION_WEBHOOK_SECRET` | Webhook 签名校验 | 仅服务端 |
+| `NOTION_WEBHOOK_VERIFICATION_TOKEN` | Notion Webhook 验证 token，同时用于后续签名校验 | 仅服务端 |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目地址 | 公开 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名键（**只读**，受 RLS 保护） | 公开 |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase 服务端键 | 仅服务端 |
@@ -22,9 +22,14 @@
 
 | 变量 | 原因 |
 |---|---|
+| `NOTION_ECONOMY_PRIVATE_DATA_SOURCE_ID` | 私人经济库变量名，站点不得读取或配置 |
 | `NOTION_ECONOMY_DATA_SOURCE_ID` | 旧名，指向**私人**经济库。配了会导致财务数据公开 |
+| `NOTION_WEBHOOK_SECRET` | 已废弃的 Webhook 变量名，必须迁移到 `NOTION_WEBHOOK_VERIFICATION_TOKEN` |
+| `NOTION_WEBHOOK_SIGNING_SECRET` | 已废弃的错误变量名，Notion 不提供独立 signing secret |
 
 > `scripts/check-env.mjs` 检测到禁止变量时应**直接报错退出**，不得静默忽略。
+
+`NOTION_ECONOMY_PUBLIC_DATA_SOURCE_ID` 在 T5 经济页启用前必须配置；T4 之前可以暂缺，但应用不得因此读取或回退到任何私人经济库。
 
 完整清单见 `docs/01-spec/architecture.md` 第 7 节。
 

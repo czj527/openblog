@@ -148,8 +148,8 @@
 
 | # | 检查项 | Phase | ✅ |
 |---|---|---|---|
-| E1 | 所有原有 URL 返回 200（无 404、无重定向链） | T4 | ☐ |
-| E2 | `/blog/[slug]` 的 slug 与重构前一致 | T4 | ☐ |
+| E1 | **保留 URL 对照表中的 URL** 返回 200；被删除页面与按 Q2 不迁移的历史文章按对照表返回 404/无路由 | T4 | ☐ |
+| E2 | 新文章的 `/blog/[slug]` 与 Notion `Slug` 一致；不把未迁移历史文章纳入 slug 一致性验收 | T4 | ☐ |
 | E3 | 每页有唯一 `<title>` | 全部 | ☐ |
 | E4 | 每页有 `<meta name="description">` | 全部 | ☐ |
 | E5 | 有 Open Graph 标签（og:title / og:image / og:description） | T4 | ☐ |
@@ -179,7 +179,7 @@
 | S8 | 危险接口 | `/api/supabase`、`/api/clear-data` → **404** | T0 | ☐ |
 | S9 | 登录限流 | 连错 6 次 → 429 或锁定 | T0 | ☐ |
 | S10 | 评论 XSS | 提交 `<script>` → 存纯文本，不执行 | T3 | ☐ |
-| S11 | Webhook 伪造 | 无 secret 调 `/api/revalidate` → 401 | T4 | ☐ |
+| S11 | Webhook 签名校验 | 首次仅含 `verification_token` 的订阅验证请求可完成握手、返回 200 且不失效缓存；后续缺少签名、错误 prefix、篡改 body、签名长度错误均返回 401；使用原始 body 生成的正确 `sha256=<hex>` 签名可触发 revalidate | T4 | ☐ |
 | S12 | 明文密码入仓 | 全仓 grep → 无明文密码 | T0 | ☐ |
 | S13 | 匿名写接口 | 匿名 `POST /api/tasks` → 401 | T3 | ☐ |
 | S14 | 匿名删接口 | 匿名 `DELETE /api/comments/x` → 401 | T3 | ☐ |
@@ -187,8 +187,8 @@
 | S16 | 评论频率 | 1 分钟 4 条 → 第 4 条被限流 | T3 | ☐ |
 | S17 | 留言频率 | 1 分钟 3 条 → 第 3 条被限流 | T3 | ☐ |
 | S18 | 依赖漏洞 | `pnpm audit` 无 high/critical | 全部 | ☐ |
-| S19 | **经济页无金额泄漏** | `curl czj527.xyz/economy` 源码中无 4 位以上财务数字 | T5 | ☐ |
-| S20 | **未引用私人经济库** | 全仓 grep 无 `NOTION_ECONOMY_DATA_SOURCE_ID` | T5 | ☐ |
+| S19 | **经济页无金额泄漏** | 只允许白名单字段（阶段、时间节点、进度百分比、里程碑状态、脱敏描述）；检查 HTML、RSC/Flight、公开 JSON/API、缓存响应和错误响应，禁止金额、账户、余额、收入、支出、投资、原始备注及可反推真实金额的字段 | T5 | ☐ |
+| S20 | **私人库和旧凭证变量没有被启用** | 私人经济库 ID 不得用于运行时数据读取；禁止变量不得有实际配置值。允许名称只出现在集中式拒绝校验、其测试、文档和 `.env.example` 注释式拒绝清单中 | T5 | ☐ |
 | S21 | **匿名无法写数据库** | 用 anon key 直插 `comments` → 被 RLS 拒绝 | T2 | ☐ |
 
 ---
@@ -201,7 +201,7 @@
 | L2 | `.env.example` 已更新，无真实密钥 | ☐ |
 | L3 | `AGENT.md` 已创建/重写，反映 openblog 新架构（非 portfolio 旧文件） | ☐ |
 | L4 | `README.md` 已更新（技术栈、页面、部署说明） | ☐ |
-| L5 | `docs/02-contracts/design-system.md` **未被修改**（如有修改须陈确认） | ☐ |
+| L5 | 设计契约与实现一致；若偏离 `portfolio origin/main` 视觉基线，必须先获陈批准，并同步更新设计契约与视觉验收项 | ☐ |
 | L6 | 旧 GitHub token 已撤销 | ☐ |
 | L7 | 新密码已设置（非默认值） | ☐ |
 | L8 | Vercel 部署成功，生产域名可访问 | ☐ |

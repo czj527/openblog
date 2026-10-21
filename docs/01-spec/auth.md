@@ -1,8 +1,6 @@
 # 权限与鉴权方案
 
-> 状态：`草案（待陈确认）`
-> 本文档定义权限边界、鉴权方案与实现要求。
-
+> 状态：`已确认（实现时按安全测试校验）`
 > 本文档定义权限边界、鉴权方案与实现要求。
 
 ---
@@ -87,9 +85,9 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '「旧默认密码」';
 | `DELETE /api/comments/[id]` | ❌ | ✅ | |
 | `PATCH /api/comments/[id]`（审核通过） | ❌ | ✅ | |
 | `DELETE /api/guestbook/[id]` | ❌ | ✅ | |
-| `/api/friend-links`（POST/PUT/DELETE） | ❌ | ✅ | GET 公开 |
+| `/api/friend-links`（POST/PUT/DELETE） | ❌ | ✅ | GET 公开；写入全部由管理员完成 |
 | `/api/tasks`、`/api/schedules`、`/api/projects`、`/api/activity-log` | ❌ | ✅ | 个人管理数据，全部需登录 |
-| `/api/revalidate` | ❌ | ❌ | 仅 Webhook，校验 `NOTION_WEBHOOK_SECRET` |
+| `/api/revalidate` | ❌ | ❌ | 仅 Notion Webhook；首次订阅验证接收 `verification_token`，后续事件校验 `X-Notion-Signature` 与 `NOTION_WEBHOOK_VERIFICATION_TOKEN` |
 | ~~`POST /api/supabase`~~ | — | — | **删除** |
 | ~~`DELETE /api/clear-data`~~ | — | — | **删除** |
 
@@ -179,13 +177,13 @@ verifyAdmin(request):
 | `POST /api/comments` | 内容长度 5-2000 字；同 IP 每分钟 ≤ 3 条；默认 `approved=false` 待审核；strip HTML |
 | `POST /api/likes` | 同 IP 同文章唯一（DB unique 约束）；每分钟 ≤ 10 次 |
 | `POST /api/guestbook` | 内容长度 1-500 字；同 IP 每分钟 ≤ 2 条；strip HTML |
-| `POST /api/revalidate` | 校验 `NOTION_WEBHOOK_SECRET`（HMAC 或 header 比对） |
+| `POST /api/revalidate` | 首次订阅请求仅接收 `verification_token`、通过受限运维流程安全取得 token 并返回 200；后续事件读取原始 body，使用 `NOTION_WEBHOOK_VERIFICATION_TOKEN` 计算 HMAC-SHA256，并用 `timingSafeEqual` 比对 `X-Notion-Signature: sha256=<hex>` |
 
 ### 4.5 数据层权限
 
 - ✅ 所有写操作必须走 `SUPABASE_SERVICE_ROLE_KEY`（仅服务端）
 - ✅ 客户端一律用 `NEXT_PUBLIC_SUPABASE_ANON_KEY`，并开启 **RLS**
-- ✅ RLS 策略：公开表（comments/guestbook/friend_links/posts_read）允许 `SELECT`；`INSERT` 仅允许特定列；`UPDATE`/`DELETE` 仅 service_role
+- ✅ 数据库 grants 与 RLS 必须同时收紧：anon 只能 `SELECT` 公开数据，不拥有 `INSERT`/`UPDATE`/`DELETE`；所有公开写入经过 Next.js API Route 后由 service_role 执行；管理员数据表对 anon 无权限
 - ✅ `service_role` key 绝不出现在任何客户端 bundle（构建后 grep 验证）
 
 ---
@@ -204,7 +202,7 @@ verifyAdmin(request):
 | S8 | 通用数据接口 | `/api/supabase`、`/api/clear-data` → **404** |
 | S9 | 登录限流 | 连续 6 次错误密码 → 第 6 次返回 429 或锁定提示 |
 | S10 | 评论 XSS | 提交 `<script>alert(1)</script>` → 存储为纯文本，渲染不执行 |
-| S11 | Webhook 伪造 | 无正确 secret 调用 `/api/revalidate` → **401** |
+| S11 | Webhook 伪造 | 首次仅含 `verification_token` 的订阅验证请求可完成握手并返回 200，且不失效缓存；后续缺少或伪造 `X-Notion-Signature` 调用 `/api/revalidate` → **401** |
 | S12 | 明文密码入仓 | `git log -p` 与当前文件 grep 密码相关字符串 → 无明文 |
 
 ---

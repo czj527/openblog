@@ -1,10 +1,8 @@
 # 目标架构与数据模型
 
-> 状态：`草案（待陈确认）`
+> 状态：`已确认（实施前按官方文档复核版本与接口细节）`
 > 变更需走 git commit，并说明修改原因。
 > 本文档定义 openblog 的系统架构、数据职责边界、Notion 数据库模型与渲染链路。
-
-> 本文档定义重构后的系统架构、数据职责边界、Notion 数据库模型与渲染链路。
 
 ---
 
@@ -51,9 +49,9 @@
 
 | 数据 | 存储位置 | 读写 | 理由 |
 |---|---|---|---|
-| 文章正文、标题、摘要、标签、分类、封面 | **Notion Database** | 只读 | 陈在 Notion 里写作，天然 Markdown/富文本友好 |
-| 草稿 | **Notion Database**（同一库，`Status = Draft`） | 只读 | 不再需要独立草稿表 |
-| 五年经济规划（**脱敏公开数据**） | **Notion Database「Economy Public」** | 只读 | 只含阶段/百分比/里程碑；原始金额留在私人库，永不外流 |
+| 文章正文、标题、摘要、标签、分类、封面 | **Notion Data Source** | 只读 | 陈在 Notion 里写作，天然 Markdown/富文本友好 |
+| 草稿 | **Notion Data Source**（同一库，`Status = Draft`） | 只读 | 不再需要独立草稿表 |
+| 五年经济规划（**脱敏公开数据**） | **Notion Data Source「Economy Public」** | 只读 | 只含阶段/进度/里程碑；原始金额留在私人库，永不外流 |
 | 评论 | **Supabase Postgres** | 读写 | 需要写入、审核、反垃圾，Notion 不适合 |
 | 点赞 | **Supabase Postgres** | 读写 | 高频写入 |
 | 留言板 | **Supabase Postgres** | 读写 | 同上 |
@@ -212,15 +210,17 @@ Notion API: retrieve block children（分页拉全量，递归处理嵌套块）
 
 **验证流程（`/api/revalidate`）**
 
+Notion 的首次订阅验证请求 body 包含 JSON 字段 `verification_token`；后续事件使用该 token 验证 `X-Notion-Signature`。握手请求只用于完成订阅 Verify，不得触发文章缓存失效。实现时按官方文档与 SDK 处理握手请求的签名要求，不依赖“握手请求一定没有签名”的假设。
+
 | 步骤 | 要求 |
 |---|---|
-| 1 | 读取原始 body（**不要先 `JSON.parse`**，签名基于原始字节） |
-| 2 | 用 `NOTION_WEBHOOK_SECRET` 计算 HMAC-SHA256，与请求头签名比对 |
-| 3 | 用 `timingSafeEqual` 比较，防时序攻击 |
-| 4 | 校验不通过 → **401，不做任何失效操作** |
-| 5 | 通过后只做「失效」，**不在此路径里同步拉取 Notion**（避免超时） |
+| 1 | 读取原始 body；后续事件签名必须基于原始字节，**不要先 `JSON.parse` 后再序列化** |
+| 2 | 若 body 是仅含 `verification_token` 的首次验证请求，通过受限的运维流程安全取得 token 并返回 200；不写普通日志、不放进公开响应，也不触发缓存失效 |
+| 3 | 后续事件使用保存的 `NOTION_WEBHOOK_VERIFICATION_TOKEN` 对原始 body 计算 HMAC-SHA256，与 `X-Notion-Signature: sha256=<hex>` 比对 |
+| 4 | 使用 `timingSafeEqual` 比较；缺少签名、格式错误、长度错误或签名不匹配均返回 **401**，不做任何失效操作 |
+| 5 | 校验通过后只做「失效」，**不在此路径里同步拉取 Notion**（避免超时） |
 
-**首次订阅验证**：Notion 订阅 Webhook 时会发一个 `verification_token` 事件，需在管理界面回填该 token，之后才推送正式事件。这一步必须记录在 T4 的验收证据里。
+**首次订阅验证**：创建订阅时取得 Notion 发来的 `verification_token`，将其配置为 `NOTION_WEBHOOK_VERIFICATION_TOKEN`，再在 Notion 控制台完成 Verify；该 token 不进入公开响应或普通日志，并作为后续事件签名的 HMAC 密钥。重建或轮换订阅后必须同步更新部署环境变量。这一步必须记录在 T4 的验收证据里。
 
 **兜底策略（Webhook 失败时）**
 
@@ -290,18 +290,18 @@ Notion API: retrieve block children（分页拉全量，递归处理嵌套块）
 
 ## 六、URL 与 SEO 保持
 
-**硬性要求：重构后所有已有 URL 不得变化。**
+**URL 规则：保留页面的公开 URL 必须稳定；被正式删除的页面和按 D-008 不迁移的历史文章不承诺继续返回 200。**
 
 | 路径 | 保持不变 |
 |---|---|
-| `/blog/[slug]` | ✅ slug 由 Notion `Slug` 字段控制，与现状对齐 |
+| `/blog/[slug]` | ✅ 新文章的 slug 由 Notion `Slug` 字段控制；已发布 slug 默认不可修改，特殊修改保留 301/alias |
 | `/archive` | ✅ |
 | `/tags` | ✅ |
 | `/rss.xml` | ✅ 格式不变 |
 | `/sitemap.xml` | ✅ 改为动态生成，但结构不变 |
 | `/robots.txt` | ✅ 不变 |
 
-> Phase 4 上线前必须生成 URL 对照表，逐个 curl 验证 200。
+> 上线前生成“保留 URL”对照表，逐个验证 200；删除页面和未迁移历史文章应明确记录为 404 或无路由，不把它们混入保留清单。
 
 ---
 
@@ -318,7 +318,7 @@ Notion API: retrieve block children（分页拉全量，递归处理嵌套块）
 | `SUPABASE_SERVICE_ROLE_KEY` | 服务端 key | **仅服务端** |
 | `ADMIN_PASSWORD_HASH` | 管理员密码哈希（bcrypt/argon2） | **仅服务端** |
 | `AUTH_SECRET` | 会话签名密钥（32+ 字节随机） | **仅服务端** |
-| `NOTION_WEBHOOK_SECRET` | Webhook 校验密钥 | **仅服务端** |
+| `NOTION_WEBHOOK_VERIFICATION_TOKEN` | Notion Webhook 验证 token，同时用于后续 HMAC 签名校验 | **仅服务端** |
 
 **删除的变量**：`DATABASE_URL`、`TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`、`ADMIN_PASSWORD`（明文，改为 hash）。
 
@@ -329,7 +329,7 @@ Notion API: retrieve block children（分页拉全量，递归处理嵌套块）
 | 决策点 | 选择 | 理由 |
 |---|---|---|
 | Notion 客户端 | 官方 `@notionhq/client` | 稳定、类型完整、自带重试 |
-| Notion API 版本 | `2025-09-03` | 当前版本，databases 已抽象为 **data sources**（`query-data-source`），旧版 `query-database` 将被淘汰 |
+| Notion API 版本 | `Notion-Version: 2026-03-11` | 当前官方 API 参考版本；`2025-09-03` 为 data source 语义引入版本，实现前仍需核对 `@notionhq/client` SDK 支持情况 |
 | 渲染方式 | 分层：`notion-to-md` 产 MDX **或** 自建 Block → React 渲染器 | 优先自建渲染器（可控性强、可注入现有 shadcn 组件）；若时间紧张先用 `notion-to-md` + 现有 `react-markdown` 链路 |
 | 缓存层 | Next.js 16 `'use cache'` + `cacheTag`/`cacheLife` | 零额外依赖，官方推荐写法 |
 | 鉴权 | HMAC 签名 token（详见 `docs/01-spec/auth.md`） | 无状态、无需建表、够安全 |
@@ -342,4 +342,4 @@ Notion API: retrieve block children（分页拉全量，递归处理嵌套块）
 - ❌ 不在站点内做文章编辑器（写作在 Notion）
 - ❌ 不做多语言（`Lang` 字段先预留，不实现切换逻辑）
 - ❌ 不做全文搜索（Phase 6 之后再评估）
-- ❌ 不改动任何视觉令牌（颜色、圆角、字体、动画）
+- ✅ 默认遵循 `docs/02-contracts/design-system.md` 与 `portfolio origin/main` 的视觉基线；开发中若需要偏离，必须先向陈提交具体方案并获批准，再同步更新设计契约和验收项。

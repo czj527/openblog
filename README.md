@@ -2,7 +2,7 @@
 
 陈子杰的个人博客（新一代实现）。
 
-保留原前端审美，Notion 作为内容源，Supabase 承载互动数据。
+默认沿用 `portfolio origin/main` 的前端审美，Notion 作为内容源，Supabase 承载互动数据。
 
 > **当前状态**：规划阶段，尚无代码。
 
@@ -63,7 +63,7 @@
 
 ## 三条铁律
 
-1. **视觉优先**：`docs/02-contracts/design-system.md` 是已认可的基线。不确定就不要改。
+1. **视觉优先**：默认遵循 `docs/02-contracts/design-system.md` 与 `portfolio origin/main`。开发中若需要更好的视觉方案，先提交具体方案并经陈批准，再同步修改设计契约与验收项。
 2. **必须交证据**：每个工单交付时提供构建日志、页面截图、curl 返回示例。不接受口头"已完成"。
 3. **一个工单一个 commit**：格式 `[T{n}] 简述`。
 
