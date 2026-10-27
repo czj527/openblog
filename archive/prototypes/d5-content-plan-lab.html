@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:,">
+  <title>Openblog / D5 content and plan lab</title>
+  <style>
+    :root { --ink:#17272d; --muted:#68777c; --paper:#edf1ef; --surface:#fbfcfa; --line:rgba(23,39,45,.16); --line-strong:rgba(23,39,45,.3); --teal:#1d716a; --teal-soft:#d8ece7; --blue:#315e97; --blue-soft:#deebf8; --amber:#986719; --amber-soft:#f4e8c9; --red:#9a403b; --red-soft:#f2d9d7; --sans:"Segoe UI","Noto Sans SC","Microsoft YaHei",sans-serif; --mono:"Cascadia Mono","SFMono-Regular",Consolas,monospace; }
+    *{box-sizing:border-box} html{min-width:320px;background:var(--paper)} body{margin:0;color:var(--ink);background:var(--paper);font-family:var(--sans);line-height:1.55} button,a{font:inherit} button{color:inherit} button:focus-visible,a:focus-visible{outline:3px solid #cf6d2e;outline-offset:3px}
+    .page{width:min(1480px,calc(100% - 48px));margin:0 auto}.top{display:flex;align-items:end;justify-content:space-between;gap:25px;padding:44px 0 25px;border-bottom:1px solid var(--line-strong)}.kicker{color:var(--teal);font:600 10px var(--mono);letter-spacing:.09em;text-transform:uppercase}.top h1{margin:11px 0 0;font-size:clamp(30px,4vw,54px);line-height:1.1;letter-spacing:-.02em;font-weight:650}.top p{max-width:690px;margin:11px 0 0;color:var(--muted);font-size:14px}.meta{display:grid;gap:5px;min-width:180px;padding-top:10px;border-top:1px solid var(--line-strong);color:var(--muted);font:10px var(--mono);text-align:right}
+    .toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;padding:16px 0;border-bottom:1px solid var(--line)}.tabs,.tool-actions{display:flex;flex-wrap:wrap;gap:6px}.tab,.tool-actions button{min-height:40px;border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:transparent;color:var(--muted);cursor:pointer;font-size:12px}.tab[aria-selected="true"],.tab:hover,.tool-actions button:hover{border-color:var(--ink);background:var(--surface);color:var(--ink)}
+    .workspace{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(330px,.8fr);gap:18px;margin:20px 0 60px}.panel{border:1px solid var(--line-strong);background:var(--surface)}.panel-header{display:flex;align-items:start;justify-content:space-between;gap:18px;padding:18px 20px;border-bottom:1px solid var(--line)}.panel-header h2{margin:0;font-size:18px;line-height:1.25;font-weight:650}.panel-header p{margin:5px 0 0;color:var(--muted);font-size:12px}.status{border-radius:3px;padding:4px 7px;font:600 10px var(--mono);white-space:nowrap}.status-raw{color:var(--blue);background:var(--blue-soft)}.status-draft{color:var(--amber);background:var(--amber-soft)}.status-approved{color:var(--teal);background:var(--teal-soft)}.status-published{color:#fff;background:var(--teal)}.status-blocked{color:var(--red);background:var(--red-soft)}
+    .pipeline{padding:20px}.step{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:11px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}.step:first-child{padding-top:0}.step:last-child{border-bottom:0}.step-number{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--line-strong);border-radius:50%;font:10px var(--mono)}.step strong{font-size:14px;font-weight:650}.step p{margin:4px 0 0;color:var(--muted);font-size:12px}.step button{min-height:34px;border:1px solid var(--line);border-radius:4px;padding:5px 8px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px}.step button:hover{border-color:var(--ink);color:var(--ink);background:var(--paper)}.diff{margin:0 20px 20px;border:1px solid var(--line);background:#f5f8f6}.diff-header{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid var(--line);font:10px var(--mono);color:var(--muted)}.diff pre{overflow:auto;margin:0;padding:14px 12px;color:#42575e;font:12px/1.6 var(--mono);white-space:pre-wrap}.minus{color:var(--red)}.plus{color:var(--teal)}
+    .gate-note{margin:0 20px 20px;padding:10px 12px;border-left:3px solid var(--amber);background:var(--amber-soft);color:#6e4d13;font-size:11px}.gate-note.is-approved{border-left-color:var(--teal);background:var(--teal-soft);color:#365b57}.gate-note.is-blocked{border-left-color:var(--red);background:var(--red-soft);color:#73322e}.gate-note.is-published{border-left-color:var(--teal);background:var(--teal-soft);color:#365b57}
+    .ledger{padding:20px}.ledger-intro{margin:0 0 16px;color:var(--muted);font-size:12px}.field{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.field:last-child{border-bottom:0}.field strong{font-size:13px;font-weight:650}.field small{display:block;margin-top:3px;color:var(--muted);font:10px var(--mono)}.field-value{color:var(--muted);font:11px var(--mono)}.visibility{min-width:68px;border:1px solid var(--line);border-radius:3px;padding:4px 6px;background:transparent;color:var(--muted);cursor:pointer;font:10px var(--mono)}.visibility.public{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}.visibility.private{border-color:var(--line);color:var(--muted);background:var(--paper)}.ledger-note{margin-top:18px;padding:12px;border-left:3px solid var(--teal);background:var(--teal-soft);color:#365b57;font-size:11px}.audit{margin-top:20px;border-top:1px solid var(--line)}.audit-row{display:flex;justify-content:space-between;gap:10px;padding:10px 20px;border-bottom:1px solid var(--line);color:var(--muted);font:10px var(--mono)}.audit-row b{color:var(--ink);font-weight:600}.footer{display:flex;justify-content:space-between;gap:20px;padding:20px 0 32px;border-top:1px solid var(--line-strong);color:var(--muted);font:10px var(--mono)}.footer a{color:inherit;text-underline-offset:3px}.hidden{display:none!important}
+    @media(max-width:900px){.workspace{grid-template-columns:1fr}.meta{text-align:left}.top{display:block}.meta{margin-top:18px}.field{grid-template-columns:minmax(0,1fr) auto}.field-value{grid-column:1 / -1}.visibility{grid-column:2;grid-row:1}.footer{display:block}.footer a{display:inline-block;margin-top:8px;margin-right:12px}}
+    @media(max-width:560px){.page{width:min(100% - 28px,1480px)}.top{padding-top:30px}.toolbar{display:block}.tool-actions{margin-top:10px}.step{grid-template-columns:26px minmax(0,1fr)}.step .status,.step button{grid-column:2;justify-self:start}.diff{margin-inline:12px}.gate-note{margin-inline:12px}.audit-row{padding-inline:14px}.panel-header{padding-inline:14px}.pipeline,.ledger{padding:14px}}
+    @media(forced-colors:active){*{box-shadow:none!important}.panel,.tab,.tool-actions button,.step button,.visibility,.diff{border-color:ButtonText}.status{border:1px solid ButtonText;background:Canvas;color:CanvasText}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="top"><div><span class="kicker">D5 / SYNTHETIC FIXTURE LAB</span><h1>发布要可审阅，规划要可见性分层</h1><p>所有内容都来自合成 fixture。这个页面只验证 MCP 优先的审批语义、原稿不可变、diff、发布回滚，以及 Ledger Snapshot 的字段级显式公开。</p></div><div class="meta"><span>NO REAL ACCOUNTS</span><span>NO REAL MONEY</span><span>PROTOCOL / MCP FIRST</span></div></header>
+    <div class="toolbar"><div class="tabs" role="tablist" aria-label="D5 实验视图"><button class="tab" type="button" role="tab" aria-selected="true" data-tab="publish">发布管线</button><button class="tab" type="button" role="tab" aria-selected="false" data-tab="ledger">Ledger Snapshot</button></div><div class="tool-actions"><button type="button" id="reset">重置合成状态</button><button type="button" id="export">导出状态（占位）</button></div></div>
+    <main class="workspace">
+      <section class="panel" data-panel="publish"><header class="panel-header"><div><h2>合成文章：fixture-article-001</h2><p>raw → L0/L1 diff → L2 批准 → Git 发布</p></div><span class="status status-raw" id="articleStatus" aria-live="polite">RAW / IMMUTABLE</span></header><div class="pipeline"><div class="step"><span class="step-number">01</span><div><strong>原稿 raw</strong><p>原样保存，不可覆盖。来源：`fixtures/article.raw.md`</p></div><span class="status status-raw">不可变</span></div><div class="step"><span class="step-number">02</span><div><strong>L0/L1 结构整理</strong><p>只允许校对、标题结构、摘要和标签；输出 diff。</p></div><button type="button" data-action="preview">预览 diff</button></div><div class="step"><span class="step-number">03</span><div><strong>L2 表达修改</strong><p>默认需要作者批准；没有批准不能进入发布。</p></div><button type="button" data-action="approve">批准 L2</button></div><div class="step"><span class="step-number">04</span><div><strong>MCP 发布</strong><p>未批准时点击发布会阻断并写入 audit；批准后才写 release-id。</p></div><button type="button" data-action="publish">发布</button></div><div class="step"><span class="step-number">05</span><div><strong>回滚</strong><p>只有已发布版本可回滚；无发布版本时点击会记录阻断 audit。</p></div><button type="button" data-action="rollback">回滚</button></div></div><div class="gate-note" id="gateNote" role="status" aria-live="polite">门禁：L2 未批准。点击发布会阻断，并在 audit 写入 content.publish.blocked；不会生成 release。</div><div class="diff hidden" id="diff"><div class="diff-header"><span>PREVIEW / SYNTHETIC DIFF</span><span>agent_note attached</span></div><pre><span class="minus">- 这是一份只用于 D5 验证的合成原稿。</span>
+<span class="plus">+ 这是一份只用于 D5 验证的合成草稿。</span>
+<span class="plus">+ ## 结构标题占位</span>
+<span class="plus">+ agent_note: 未改变原稿主张。</span></pre></div><div class="audit" id="audit" aria-live="polite"><div class="audit-row"><b>audit.init</b><span>fixture loaded · raw immutable · L2 not approved</span></div></div></section>
+      <section class="panel hidden" data-panel="ledger"><header class="panel-header"><div><h2>Ledger Snapshot / fixture-ledger-2026-10</h2><p>字段级显式公开：每个字段独立切换，不展示真实金额。</p></div><span class="status status-draft">SYNTHETIC / DRAFT</span></header><div class="ledger"><p class="ledger-intro">公开状态只影响展示层；原始值仍由独立经济规划项目持有。点击“公开 / 私密”模拟字段可见性策略。</p><div class="field" data-field="monthlyIncome"><div><strong>月收入</strong><small>unit: CNY · fixture value: null</small></div><span class="field-value">已隐藏</span><button class="visibility private" type="button">私密</button></div><div class="field" data-field="savingsRate"><div><strong>储蓄率</strong><small>unit: percent · fixture value: sample-percent</small></div><span class="field-value">sample-percent</span><button class="visibility public" type="button">公开</button></div><div class="field" data-field="emergencyFund"><div><strong>应急金里程碑</strong><small>unit: milestone · fixture value: sample-milestone</small></div><span class="field-value">sample-milestone</span><button class="visibility public" type="button">公开</button></div><div class="field" data-field="netWorth"><div><strong>净资产</strong><small>unit: CNY · fixture value: null</small></div><span class="field-value">已隐藏</span><button class="visibility private" type="button">私密</button></div><div class="field" data-field="fiveYearTarget"><div><strong>五年目标</strong><small>unit: milestone · fixture value: sample-target</small></div><span class="field-value">sample-target</span><button class="visibility public" type="button">公开</button></div><div class="ledger-note">当前已确认的边界：字段级显式公开。具体金额、比例和里程碑字段仍应由经济规划项目提供正式 schema。</div></div></section>
+    </main>
+    <footer class="footer"><span>D5 / SYNTHETIC ONLY · NO PRODUCTION ACTIONS</span><span><a href="./architecture-map.html">架构图</a> · <a href="./desk-prototype.html">Desk</a> · <a href="../../redesign/_brief/decision-register.md">决策登记</a></span></footer>
+  </div>
+  <script>
+    (() => {
+      const tabs = [...document.querySelectorAll('[data-tab]')];
+      const panels = [...document.querySelectorAll('[data-panel]')];
+      const status = document.getElementById('articleStatus');
+      const diff = document.getElementById('diff');
+      const audit = document.getElementById('audit');
+      const gateNote = document.getElementById('gateNote');
+      const state = { approved: false, published: false, releaseId: 'fixture-001' };
+      function addAudit(name, message) { const row = document.createElement('div'); row.className = 'audit-row'; row.innerHTML = `<b>${name}</b><span>${message}</span>`; audit.append(row); }
+      function setStatus(className, text) { status.className = `status ${className}`; status.textContent = text; }
+      function setGate(text, mode) { gateNote.textContent = text; gateNote.className = `gate-note${mode ? ` is-${mode}` : ''}`; }
+      function setTab(tab) { tabs.forEach((item) => item.setAttribute('aria-selected', String(item.dataset.tab === tab))); panels.forEach((panel) => panel.classList.toggle('hidden', panel.dataset.panel !== tab)); }
+      tabs.forEach((tab) => tab.addEventListener('click', () => setTab(tab.dataset.tab)));
+      document.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => {
+        const action = button.dataset.action;
+        if (action === 'preview') {
+          diff.classList.remove('hidden');
+          addAudit('content.preview', 'synthetic diff shown · agent_note attached · no approval implied');
+          return;
+        }
+        if (action === 'approve') {
+          if (state.approved) { addAudit('content.approve', 'already approved · no duplicate state change'); return; }
+          state.approved = true;
+          button.textContent = 'L2 已批准';
+          setStatus('status-approved', 'APPROVED / L2 DIFF ACCEPTED');
+          setGate('门禁：L2 已批准。发布将写入合成 release-id；回滚仅在已有发布版本时可用。', 'approved');
+          addAudit('content.approve', 'L2 diff accepted · publish unlocked · synthetic only');
+          return;
+        }
+        if (action === 'publish') {
+          if (!state.approved) {
+            diff.classList.remove('hidden');
+            setStatus('status-blocked', 'BLOCKED / L2 NOT APPROVED');
+            setGate('已阻断：L2 未批准，未生成 release；audit 已记录 content.publish.blocked。', 'blocked');
+            addAudit('content.publish.blocked', 'L2 approval required · no release written · audit recorded');
+            return;
+          }
+          if (state.published) { addAudit('content.publish', `release ${state.releaseId} already current · idempotent`); return; }
+          state.published = true;
+          setStatus('status-published', `PUBLISHED / ${state.releaseId.toUpperCase()}`);
+          setGate(`已发布（合成）：release ${state.releaseId}。可执行回滚；所有状态只在页面内存中。`, 'published');
+          addAudit('content.publish', `release ${state.releaseId} published · synthetic only`);
+          return;
+        }
+        if (action === 'rollback') {
+          if (!state.published) {
+            setStatus('status-blocked', 'BLOCKED / NO PUBLISHED RELEASE');
+            setGate('已阻断：没有已发布版本可回滚；audit 已记录 content.rollback.blocked。', 'blocked');
+            addAudit('content.rollback.blocked', 'no published release · rollback refused · audit recorded');
+            return;
+          }
+          state.published = false;
+          setStatus('status-draft', 'ROLLED BACK / DRAFT');
+          setGate('已回滚（合成）：当前回到 draft；批准仍有效，可再次发布。', '');
+          addAudit('content.rollback', `release ${state.releaseId} rolled back · draft restored`);
+          return;
+        }
+      }));
+      document.querySelectorAll('.visibility').forEach((button) => button.addEventListener('click', () => { const field = button.closest('.field'); const value = field.querySelector('.field-value'); const publicNow = button.classList.toggle('public'); button.classList.toggle('private', !publicNow); button.textContent = publicNow ? '公开' : '私密'; value.textContent = publicNow ? (field.dataset.field === 'monthlyIncome' || field.dataset.field === 'netWorth' ? 'sample-value' : 'sample-visible') : '已隐藏'; addAudit('plan.visibility.update', `${field.dataset.field} → ${publicNow ? 'public' : 'private'}`); }));
+      document.getElementById('reset').addEventListener('click', () => location.reload());
+      document.getElementById('export').addEventListener('click', () => addAudit('state.export', 'synthetic state only · no file written'));
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openblog.local/schemas/plates.manifest.schema.json",
+  "title": "Openblog visual plate manifest",
+  "type": "object",
+  "required": ["version", "status", "plates", "missingMinimumSet"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["exploration", "review", "approved"] },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "plates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/plate" }
+    },
+    "missingMinimumSet": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "dimensions": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "cabinWindow": {
+      "oneOf": [
+        { "type": "string", "enum": ["review-required"] },
+        {
+          "type": "object",
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "number", "minimum": 0, "maximum": 1 },
+            "y": { "type": "number", "minimum": 0, "maximum": 1 },
+            "note": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "plate": {
+      "type": "object",
+      "required": ["id", "direction", "season", "timeOfDay", "weather", "status", "source", "format", "dimensions", "safeTextTone", "cabinWindow", "sunDirection", "derivedWebAssets"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+        "direction": { "enum": ["A", "B", "C"] },
+        "season": { "enum": ["spring", "summer", "autumn", "winter"] },
+        "timeOfDay": { "enum": ["day", "dawn", "dusk", "night"] },
+        "weather": { "type": "string" },
+        "status": { "enum": ["exploration", "review", "approved"] },
+        "source": { "type": "string" },
+        "format": { "enum": ["jpeg", "png", "webp", "avif"] },
+        "dimensions": { "$ref": "#/$defs/dimensions" },
+        "safeTextTone": { "enum": ["light", "dark", "mixed", "review-required"] },
+        "cabinWindow": { "$ref": "#/$defs/cabinWindow" },
+        "sunDirection": { "type": "string" },
+        "derivedWebAssets": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

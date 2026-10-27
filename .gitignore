@@ -54,3 +54,24 @@ coverage/
 # 临时文件
 .tmp/
 tmp/
+
+# 设计验证输出（原始母版与本地截图不进仓库）
+_assets/masters/
+_assets/*.png
+_assets/*.jpg
+_assets/*.jpeg
+_assets/*.webp
+_assets/*.avif
+
+# 已移出活动仓库的历史路径，防止嵌套旧项目回流
+/docs/
+/design/
+/portfolio/
+
+# 第三方参考站截图与本地验证截图（版权/体积原因不进仓库）
+redesign/research/refs/*.png
+redesign/research/refs/*.jpg
+redesign/research/refs/*.jpeg
+redesign/research/refs/*.webp
+redesign/research/refs/*.avif
+archive/prototypes/spikes/shots/

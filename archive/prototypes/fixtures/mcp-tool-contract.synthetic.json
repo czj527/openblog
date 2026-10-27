@@ -1,0 +1,12 @@
+{
+  "protocol": "MCP",
+  "version": "draft-0",
+  "synthetic": true,
+  "tools": [
+    { "name": "content.preview", "permission": "read:draft", "idempotency": "preview-hash" },
+    { "name": "content.approve", "permission": "write:approval", "idempotency": "draft-hash" },
+    { "name": "content.publish", "permission": "write:publish", "idempotency": "release-id" },
+    { "name": "content.rollback", "permission": "write:rollback", "idempotency": "release-id" },
+    { "name": "audit.list", "permission": "read:audit", "idempotency": "query-hash" }
+  ]
+}

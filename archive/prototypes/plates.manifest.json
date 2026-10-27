@@ -1,0 +1,82 @@
+{
+  "$schema": "./plates.manifest.schema.json",
+  "version": 1,
+  "status": "exploration",
+  "notes": [
+    "These records describe exploration images only; they are not approved production plates.",
+    "The final manifest must include safe text tone, cabin window position, sun direction, and derived web assets."
+  ],
+  "plates": [
+    {
+      "id": "A-autumn-v2-exploration",
+      "direction": "A",
+      "season": "autumn",
+      "timeOfDay": "day",
+      "weather": "clear",
+      "status": "exploration",
+      "source": "_assets/raw/a/a-autumn-v2.jpg",
+      "format": "jpeg",
+      "dimensions": { "width": 2048, "height": 1153 },
+      "safeTextTone": "review-required",
+      "cabinWindow": "review-required",
+      "sunDirection": "left",
+      "derivedWebAssets": []
+    },
+    {
+      "id": "A-winter-v1-exploration",
+      "direction": "A",
+      "season": "winter",
+      "timeOfDay": "day",
+      "weather": "clear",
+      "status": "exploration",
+      "source": "_assets/raw/a/a-winter-v1.jpg",
+      "format": "jpeg",
+      "dimensions": { "width": 2048, "height": 1153 },
+      "safeTextTone": "review-required",
+      "cabinWindow": { "x": 0.16, "y": 0.69, "note": "approximate from visual inspection" },
+      "sunDirection": "left",
+      "derivedWebAssets": []
+    },
+    {
+      "id": "A-winter-v2-exploration",
+      "direction": "A",
+      "season": "winter",
+      "timeOfDay": "day",
+      "weather": "mist",
+      "status": "exploration",
+      "source": "_assets/raw/a/a-winter-v2.jpg",
+      "format": "jpeg",
+      "dimensions": { "width": 2048, "height": 1151 },
+      "safeTextTone": "review-required",
+      "cabinWindow": "review-required",
+      "sunDirection": "left",
+      "derivedWebAssets": []
+    },
+    {
+      "id": "A-spring-edit-probe",
+      "direction": "A",
+      "season": "spring",
+      "timeOfDay": "day",
+      "weather": "clear",
+      "status": "exploration",
+      "source": "_assets/raw/a/a-spring-edit-probe.png",
+      "format": "png",
+      "dimensions": { "width": 1024, "height": 576 },
+      "safeTextTone": "review-required",
+      "cabinWindow": { "x": 0.16, "y": 0.69, "note": "inherited composition; probe only" },
+      "sunDirection": "left",
+      "derivedWebAssets": []
+    }
+  ],
+  "missingMinimumSet": [
+    "A-spring-day",
+    "A-summer-day",
+    "A-autumn-night",
+    "A-winter-night",
+    "plates with verified text-safe area",
+    "2560w AVIF/WebP derivatives",
+    "640w thumbnails",
+    "LQIP values",
+    "foliage/water/sky mask metadata"
+  ]
+}

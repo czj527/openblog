@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <title>Openblog redesign / architecture map</title>
+  <link rel="stylesheet" href="./architecture-map.css">
+</head>
+<body>
+  <header class="page-header">
+    <div class="eyebrow">OPENBLOG / DESIGN VALIDATION</div>
+    <div class="header-row">
+      <div>
+        <h1>从原稿到一扇可阅读的窗</h1>
+        <p class="lede">当前设计的证据地图：哪些已经确定，哪些只是推荐，哪些必须先验证或由作者拍板。</p>
+      </div>
+      <div class="header-meta" aria-label="当前阶段">
+        <span class="meta-label">阶段</span>
+        <strong>DESIGN / D0–D6</strong>
+        <span class="meta-label">更新</span>
+        <strong>2026.10.26</strong>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="toolbar" aria-label="筛选架构节点">
+      <div class="legend" aria-label="状态图例">
+        <span class="legend-item"><i class="status-dot status-confirmed"></i>已确认</span>
+        <span class="legend-item"><i class="status-dot status-recommended"></i>推荐</span>
+        <span class="legend-item"><i class="status-dot status-pending"></i>待决策 / 待验证</span>
+        <span class="legend-item"><i class="status-dot status-archived"></i>已归档</span>
+      </div>
+      <div class="filters" role="group" aria-label="节点状态筛选">
+        <button class="filter-button is-active" type="button" data-filter="all" aria-pressed="true">全部 <span>21</span></button>
+        <button class="filter-button" type="button" data-filter="confirmed" aria-pressed="false">已确认 <span>8</span></button>
+        <button class="filter-button" type="button" data-filter="recommended" aria-pressed="false">推荐 <span>8</span></button>
+        <button class="filter-button" type="button" data-filter="pending" aria-pressed="false">待处理 <span>3</span></button>
+        <button class="filter-button" type="button" data-filter="archived" aria-pressed="false">归档 <span>2</span></button>
+      </div>
+    </section>
+
+    <section class="map-shell" aria-label="博客重构架构流程图">
+      <div class="map-caption">
+        <span><b>01</b> 输入与意图</span>
+        <span><b>02</b> Agent 发布管线</span>
+        <span><b>03</b> Window / Desk / Workbench</span>
+        <span><b>04</b> 数据域与分发</span>
+      </div>
+
+      <div class="map-grid">
+        <section class="lane lane-inputs" aria-labelledby="inputs-title">
+          <div class="lane-heading">
+            <span class="lane-index">01</span>
+            <div>
+              <h2 id="inputs-title">输入与意图</h2>
+              <p>内容、规划和世界状态从哪里来</p>
+            </div>
+          </div>
+          <div class="node-stack">
+            <button class="map-node node-confirmed" type="button" data-node="author" data-status="confirmed">
+              <span class="node-kicker">AUTHOR</span>
+              <strong>作者原稿</strong>
+              <small>观点、随笔、生活记录</small>
+              <span class="node-status">已确认</span>
+            </button>
+            <button class="map-node node-recommended" type="button" data-node="obsidian" data-status="recommended">
+              <span class="node-kicker">WRITING FRONTEND</span>
+              <strong>Obsidian / Notion</strong>
+              <small>可替换的写作前端，不是运行时 CMS</small>
+              <span class="node-status">推荐</span>
+            </button>
+            <button class="map-node node-confirmed" type="button" data-node="finance-source" data-status="confirmed">
+              <span class="node-kicker">EXTERNAL PROJECT</span>
+              <strong>经济规划项目</strong>
+              <small>产生可公开的 Ledger Snapshot</small>
+              <span class="node-status">边界已确认</span>
+            </button>
+            <button class="map-node node-confirmed" type="button" data-node="weather" data-status="confirmed">
+              <span class="node-kicker">WORLD STATE</span>
+              <strong>占位天气 + 手动预览</strong>
+              <small>MVP 不绑定城市；真实 provider 延后</small>
+              <span class="node-status">MVP 已确认</span>
+            </button>
+          </div>
+          <div class="lane-footnote">输入层不直接决定页面样式；它们先进入稳定契约或主题状态。</div>
+        </section>
+
+        <section class="lane lane-pipeline" aria-labelledby="pipeline-title">
+          <div class="lane-heading">
+            <span class="lane-index">02</span>
+            <div>
+              <h2 id="pipeline-title">Agent 发布管线</h2>
+              <p>降低后台摩擦，保留作者控制权</p>
+            </div>
+          </div>
+          <div class="pipeline-flow">
+            <button class="map-node node-confirmed" type="button" data-node="raw" data-status="confirmed">
+              <span class="node-kicker">IMMUTABLE</span>
+              <strong>raw 原稿</strong>
+              <small>原样存档，永远可 diff</small>
+              <span class="node-status">已确认</span>
+            </button>
+            <span class="flow-arrow" aria-hidden="true">↓</span>
+            <button class="map-node node-recommended" type="button" data-node="l0l1" data-status="recommended">
+              <span class="node-kicker">AUTO</span>
+              <strong>L0 / L1 整理</strong>
+              <small>校对、结构、摘要、标签</small>
+              <span class="node-status">推荐自动</span>
+            </button>
+            <span class="flow-arrow" aria-hidden="true">↓</span>
+            <button class="map-node node-pending" type="button" data-node="l2" data-status="pending">
+              <span class="node-kicker">DIFF REQUIRED</span>
+              <strong>L2 表达修改</strong>
+              <small>出 diff，作者批准后继续</small>
+              <span class="node-status">待审批规则</span>
+            </button>
+            <span class="flow-arrow" aria-hidden="true">↓</span>
+            <button class="map-node node-confirmed" type="button" data-node="contract" data-status="confirmed">
+              <span class="node-kicker">CONTENT CONTRACT</span>
+              <strong>Markdown + frontmatter</strong>
+              <small>站点只认稳定契约</small>
+              <span class="node-status">已确认方向</span>
+            </button>
+            <span class="flow-arrow" aria-hidden="true">↓</span>
+            <div class="split-flow">
+              <button class="map-node node-recommended" type="button" data-node="preview" data-status="recommended">
+                <span class="node-kicker">REVIEW</span>
+                <strong>预览 / 审阅</strong>
+                <small>Studio 是薄客户端</small>
+                <span class="node-status">推荐</span>
+              </button>
+              <button class="map-node node-confirmed" type="button" data-node="agent-api" data-status="confirmed">
+                <span class="node-kicker">INTERFACE / PRIORITY</span>
+                <strong>MCP 优先</strong>
+                <small>先定能力与权限，再补协议契约</small>
+                <span class="node-status">方向已确认</span>
+              </button>
+            </div>
+            <span class="flow-arrow" aria-hidden="true">↓</span>
+            <button class="map-node node-confirmed" type="button" data-node="publish" data-status="confirmed">
+              <span class="node-kicker">VERSIONED</span>
+              <strong>确认 → Git → 发布</strong>
+              <small>可回滚、可审计、可生成分发物</small>
+              <span class="node-status">已确认方向</span>
+            </button>
+          </div>
+          <div class="policy-strip">
+            <span><b>不可变</b> 原稿</span>
+            <span><b>可审阅</b> diff + agent_note</span>
+            <span><b>默认禁止</b> L3 扩写</span>
+          </div>
+        </section>
+
+        <section class="lane lane-site" aria-labelledby="site-title">
+          <div class="lane-heading">
+            <span class="lane-index">03</span>
+            <div>
+              <h2 id="site-title">站点体验</h2>
+              <p>窗负责情绪，桌负责信息，工作台负责执行</p>
+            </div>
+          </div>
+          <div class="scope-band">
+            <span class="scope-tag scope-tag-public">PUBLIC</span>
+            <span>Window / Desk：访客可见，可被索引</span>
+          </div>
+          <div class="site-pair">
+            <button class="map-node node-recommended node-window" type="button" data-node="window" data-status="recommended">
+              <span class="node-kicker">WINDOW / /</span>
+              <strong>首页「窗」</strong>
+              <small>静态 poster → WebGL2；HUD、一个入口、手动覆盖</small>
+              <span class="node-status">推荐 / D1 验证</span>
+            </button>
+            <div class="site-divider" aria-hidden="true"><span>窗沿</span></div>
+            <button class="map-node node-recommended node-desk" type="button" data-node="desk" data-status="recommended">
+              <span class="node-kicker">DESK / SECONDARY PAGES</span>
+              <strong>二级「桌」</strong>
+              <small>文章、问题、规划、时间线；左对齐信息布局</small>
+              <span class="node-status">推荐 / D2 验证</span>
+            </button>
+          </div>
+          <div class="scope-band scope-band-private">
+            <span class="scope-tag scope-tag-private">PRIVATE</span>
+            <span>Workbench：需认证，不进访客顶栏，默认不被索引</span>
+          </div>
+          <div class="private-stack">
+            <button class="map-node node-recommended node-workbench" type="button" data-node="workbench" data-status="recommended">
+              <span class="node-kicker">WORKBENCH / PRIVATE DESK</span>
+              <strong>作者工作台</strong>
+              <small>本周计划、任务、项目推进、Agent 审阅队列；默认私有</small>
+              <span class="node-status">推荐 / D6 验证</span>
+            </button>
+          </div>
+          <div class="site-notes">
+            <div class="note-chip"><b>场景</b> 四季 × 天气只发生在窗与窗沿</div>
+            <div class="note-chip"><b>边界</b> 桌页不靠装饰动效传达质感</div>
+            <div class="note-chip"><b>分层</b> 公开阅读与私有执行数据分开建模，公开只经显式投影</div>
+            <div class="note-chip note-chip-pending"><b>现状</b> Window / Desk 与 Workbench 已有合成原型证据；生产认证、私有存储、公开投影和 Agent 权限仍待验证</div>
+          </div>
+          <div class="site-links" aria-label="公开页面能力">
+            <span>写作索引</span><i>→</i><span>文章阅读</span><i>→</i><span>问题 / 系列</span><i>→</i><span>规划 / 时间线</span>
+          </div>
+          <div class="site-links site-links-private" aria-label="私有页面能力">
+            <span>工作台入口（需认证）</span><i>→</i><span>本周 / 任务 / 项目 / 审阅</span>
+          </div>
+        </section>
+      </div>
+
+      <section class="domain-band" aria-labelledby="domains-title">
+        <div class="lane-heading">
+          <span class="lane-index">04</span>
+          <div>
+            <h2 id="domains-title">数据域与未来分发</h2>
+            <p>分开存储，只通过稳定 ID 和链接互相引用</p>
+          </div>
+        </div>
+        <div class="domain-grid">
+          <button class="domain-card node-confirmed" type="button" data-node="editorial" data-status="confirmed">
+            <span class="domain-symbol">ED</span>
+            <strong>Editorial</strong>
+            <small>文章 / Git / MDX</small>
+            <span class="node-status">已确认方向</span>
+          </button>
+          <button class="domain-card node-pending" type="button" data-node="plan" data-status="pending">
+            <span class="domain-symbol">PL</span>
+            <strong>Plan</strong>
+            <small>公开快照 / 里程碑 / 人生规划</small>
+            <span class="node-status">透明度待定</span>
+          </button>
+          <button class="domain-card node-pending" type="button" data-node="engagement" data-status="pending">
+            <span class="domain-symbol">EN</span>
+            <strong>Engagement</strong>
+            <small>评论 / 留言 / 反应</small>
+            <span class="node-status">MVP 范围待定</span>
+          </button>
+          <button class="domain-card node-recommended" type="button" data-node="distribution" data-status="recommended">
+            <span class="domain-symbol">DI</span>
+            <strong>Distribution</strong>
+            <small>OG / 视频 / newsletter 派生物</small>
+            <span class="node-status">后续阶段</span>
+          </button>
+          <button class="domain-card node-recommended" type="button" data-node="ops" data-status="recommended">
+            <span class="domain-symbol">OP</span>
+            <strong>Ops</strong>
+            <small>令牌 / 审计 / 审批记录</small>
+            <span class="node-status">推荐</span>
+          </button>
+        </div>
+        <div class="domain-boundary">
+          <span>Workbench 私有执行面 ≠ Plan 公开读模型 ≠ Ops 治理记录</span>
+          <span>原始财务数据不进站点仓库</span>
+          <span>Timeline 是只读读模型，不是第六个域</span>
+          <span>广告 / 视频 / newsletter 不是 MVP 依赖</span>
+        </div>
+      </section>
+
+      <section class="domain-band archive-band" aria-labelledby="archive-title">
+        <div class="lane-heading">
+          <span class="lane-index">HISTORY</span>
+          <div>
+            <h2 id="archive-title">历史方案（只作证据）</h2>
+            <p>旧路线已移出活动仓库，不再成为实现约束</p>
+          </div>
+        </div>
+        <div class="domain-grid archive-grid">
+          <button class="domain-card node-archived" type="button" data-node="legacy-docs" data-status="archived">
+            <span class="domain-symbol">OLD</span>
+            <strong>旧规划与契约</strong>
+            <small>docs / DECISIONS / TASKS</small>
+            <span class="node-status">已归档</span>
+          </button>
+          <button class="domain-card node-archived" type="button" data-node="legacy-site" data-status="archived">
+            <span class="domain-symbol">OLD</span>
+            <strong>旧站与视觉原型</strong>
+            <small>portfolio / v1–v3 prototypes</small>
+            <span class="node-status">已归档</span>
+          </button>
+        </div>
+      </section>
+    </section>
+
+    <section class="detail-panel" aria-live="polite" aria-label="节点详情">
+      <div class="detail-empty">
+        <span class="detail-mark">+</span>
+        <div><strong>选择一个节点</strong><p>查看它的当前状态、证据来源和下一步验证。</p></div>
+      </div>
+      <div class="detail-content" hidden>
+        <div class="detail-heading">
+          <span class="detail-kicker"></span>
+          <h2></h2>
+          <span class="detail-status"></span>
+        </div>
+        <p class="detail-summary"></p>
+        <dl class="detail-facts">
+          <div><dt>当前结论</dt><dd data-field="conclusion"></dd></div>
+          <div><dt>证据</dt><dd data-field="evidence"></dd></div>
+          <div><dt>下一步</dt><dd data-field="next"></dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="gate-strip" aria-labelledby="gates-title">
+      <div>
+        <span class="eyebrow">VALIDATION GATES</span>
+        <h2 id="gates-title">先验证，再写生产代码</h2>
+      </div>
+      <div class="gate-list">
+        <span><b>D0</b> IA / 空状态</span>
+        <span><b>D1</b> Window</span>
+        <span><b>D2</b> Desk</span>
+        <span><b>D3</b> 资产 / 主题</span>
+        <span><b>D4</b> 技术 / 体验</span>
+        <span><b>D5</b> Agent / Plan</span>
+        <span><b>D6</b> Workbench</span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <span>OPENBLOG / DESIGN TRACK</span>
+    <a href="../../redesign/_brief/design-status.md">状态矩阵</a>
+    <a href="../../redesign/_brief/decision-register.md">决策登记</a>
+    <a href="../../redesign/source/original-requirements.md">用户原文</a>
+    <a href="../../redesign/source/requirements-addendum-20261026.md">需求增补</a>
+  </footer>
+
+  <script src="./architecture-map.js" defer></script>
+</body>
+</html>

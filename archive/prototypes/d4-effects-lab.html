@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Openblog / D4 effects lab</title>
+  <style>
+    :root {
+      --ink: #f4f8f6;
+      --muted: rgba(244,248,246,.72);
+      --line: rgba(244,248,246,.26);
+      --surface: rgba(13,29,34,.72);
+      --surface-solid: #172f36;
+      --accent: #e7c681;
+      --sans: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      --mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-width: 320px; min-height: 100%; margin: 0; background: #152c34; color: var(--ink); font-family: var(--sans); }
+    body { overflow-x: hidden; }
+    button, a { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #f0bd70; outline-offset: 3px; }
+    .lab { min-height: 100svh; position: relative; isolation: isolate; padding: 30px clamp(18px, 4vw, 60px) 60px; }
+    .poster, .snow, .fog, .vignette { position: fixed; z-index: -4; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .poster { object-fit: cover; filter: saturate(.82) brightness(.72); }
+    .snow { z-index: -3; opacity: .88; }
+    .fog { z-index: -2; opacity: .34; mix-blend-mode: screen; }
+    .vignette { z-index: -1; background: linear-gradient(180deg, rgba(8,20,25,.54), rgba(8,20,25,.05) 42%, rgba(8,20,25,.7)); }
+    .header { display: flex; justify-content: space-between; gap: 30px; align-items: end; max-width: 1440px; margin: 0 auto; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+    .kicker { color: var(--accent); font: 600 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    h1 { max-width: 760px; margin: 12px 0 0; font-size: clamp(30px, 4vw, 56px); line-height: 1.08; font-weight: 600; letter-spacing: -.02em; }
+    .lede { max-width: 650px; margin: 12px 0 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+    .meta { display: grid; gap: 4px; min-width: 150px; padding-top: 9px; border-top: 1px solid var(--line); color: var(--muted); font: 10px var(--mono); text-align: right; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; max-width: 1440px; margin: 18px auto 0; }
+    .toolbar-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .toolbar button { min-height: 40px; border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; background: rgba(12,28,33,.45); color: var(--muted); cursor: pointer; font-size: 12px; }
+    .toolbar button:hover, .toolbar button[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); background: rgba(12,28,33,.78); }
+    .toolbar label { color: var(--muted); font: 10px var(--mono); }
+    .stage { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr); gap: 18px; max-width: 1440px; margin: 24px auto 0; }
+    .scene { position: relative; min-height: 480px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: rgba(10,22,27,.3); }
+    .scene-header { position: absolute; z-index: 2; top: 18px; left: 18px; right: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font: 10px var(--mono); }
+    .scene-header b { color: var(--ink); font-weight: 600; }
+    .scene-copy { position: absolute; z-index: 2; left: 50%; top: 52%; width: min(490px, calc(100% - 36px)); transform: translate(-50%, -50%); text-align: center; }
+    .scene-copy h2 { margin: 0; font-size: clamp(25px, 4vw, 46px); line-height: 1.12; font-weight: 550; }
+    .scene-copy p { margin: 12px auto 0; color: var(--muted); font-size: 13px; }
+    .scene-copy button { min-height: 48px; margin-top: 21px; border: 1px solid rgba(255,255,255,.54); border-radius: 999px; padding: 9px 17px; background: rgba(12,30,35,.24); cursor: pointer; backdrop-filter: blur(14px); }
+    .scene-copy button:hover { background: rgba(12,30,35,.52); }
+    .scene-hud { position: absolute; z-index: 2; left: 18px; bottom: 18px; color: var(--muted); font: 10px var(--mono); }
+    .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start; }
+    .card { min-height: 224px; border: 1px solid var(--line); border-radius: 7px; padding: 15px; background: var(--surface); }
+    .card h2 { margin: 7px 0 0; font-size: 16px; line-height: 1.25; font-weight: 600; }
+    .card p { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .card-label { color: var(--accent); font: 10px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+    .glass-demo { display: grid; place-items: center; min-height: 76px; margin-top: 15px; border: 1px solid rgba(255,255,255,.22); border-radius: 7px; background: url('../../../_assets/raw/a/a-winter-v1.jpg') center/cover; }
+    .glass-swatch { min-width: 120px; min-height: 38px; border: 1px solid rgba(255,255,255,.65); border-radius: 999px; padding: 8px 13px; background: rgba(255,255,255,.15); color: #fff; text-align: center; font-size: 11px; }
+    .glass-css .glass-swatch { backdrop-filter: blur(13px) saturate(140%); }
+    .glass-svg .glass-swatch { filter: url(#soft-displace); backdrop-filter: blur(8px) saturate(140%); }
+    .glass-solid .glass-swatch { background: var(--surface-solid); backdrop-filter: none; }
+    .verdict { margin-top: 12px; color: var(--muted); font: 10px/1.5 var(--mono); }
+    .verdict::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--accent); }
+    .notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 1440px; margin: 18px auto 0; }
+    .note { border-top: 1px solid var(--line); padding-top: 12px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .note b { display: block; margin-bottom: 4px; color: var(--ink); font: 600 10px var(--mono); text-transform: uppercase; }
+    .footer { display: flex; justify-content: space-between; gap: 18px; max-width: 1440px; margin: 32px auto 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font: 10px var(--mono); }
+    .footer a { color: inherit; text-underline-offset: 3px; }
+    svg { position: absolute; width: 0; height: 0; }
+    .is-paused .snow, .is-paused .fog { display: none; }
+    @media (max-width: 920px) { .stage { grid-template-columns: 1fr; } .scene { min-height: 430px; } }
+    @media (max-width: 600px) { .lab { padding-inline: 14px; } .header { display: block; } .meta { margin-top: 20px; text-align: left; } .comparison, .notes { grid-template-columns: 1fr; } .scene { min-height: 470px; } .footer { display: block; } .footer a { display: inline-block; margin-top: 8px; margin-right: 12px; } }
+    @media (prefers-reduced-motion: reduce) { .snow, .fog { display: none; } .scene-copy button { backdrop-filter: none; background: rgba(12,30,35,.72); } }
+    @media (prefers-reduced-transparency: reduce), (forced-colors: active) { .glass-swatch, .scene-copy button { backdrop-filter: none; background: var(--surface-solid); } }
+    @media (forced-colors: active) { .poster, .snow, .fog, .vignette { display: none; } .scene, .card, .glass-demo, .toolbar button { border-color: ButtonText; } }
+  </style>
+</head>
+<body>
+  <svg aria-hidden="true"><filter id="soft-displace" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".025" numOctaves="1" seed="3" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="5"/></filter></svg>
+  <main class="lab" id="lab">
+    <img class="poster" src="../../../_assets/raw/a/a-winter-v1.jpg" alt="雪山湖谷 poster">
+    <canvas class="snow" id="snow" aria-hidden="true"></canvas>
+    <canvas class="fog" id="fog" aria-hidden="true"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+    <header class="header">
+      <div><span class="kicker">D4 / EFFECTS LAB</span><h1>雪、雾与玻璃：只保留真正有用的层</h1><p class="lede">这是技术与体验验证页，不是最终首页。左侧测试粒子强度和降级，右侧比较玻璃路径在不支持透明度时的回退。</p></div>
+      <div class="meta"><span>POSTER / STATIC FIRST</span><span id="runtime">CANVAS / STARTING</span><span>NO REAL WEATHER</span></div>
+    </header>
+    <div class="toolbar">
+      <div class="toolbar-group" role="group" aria-label="效果控制"><button type="button" id="pause" aria-pressed="false">暂停效果</button><button type="button" data-density="low" aria-pressed="false">低密度</button><button type="button" data-density="medium" aria-pressed="true">中密度</button><button type="button" data-density="high" aria-pressed="false">高密度</button></div>
+      <div class="toolbar-group"><label for="fogRange">雾度</label><input id="fogRange" type="range" min="0" max="100" value="34"><span id="fogValue">34%</span></div>
+    </div>
+    <section class="stage">
+      <section class="scene" aria-label="雪雾叠加场景">
+        <div class="scene-header"><span><b>SCENE</b> / poster + particles</span><span id="sceneState">snow / fog / medium</span></div>
+        <div class="scene-copy"><span class="kicker">STATIC POSTER REMAINS THE FALLBACK</span><h2>动态层应该退到背景里</h2><p>默认强度低、可暂停、无 WebGL 时仍保留这张静态图。</p><button type="button" id="sceneButton">测试按钮</button></div>
+        <div class="scene-hud">D4 · <span id="fpsLabel">2D effect loop</span></div>
+      </section>
+      <section class="comparison" aria-label="玻璃方案比较">
+        <article class="card glass-css"><span class="card-label">PATH A / BASELINE</span><h2>纯 CSS 玻璃</h2><p>所有支持 backdrop-filter 的浏览器默认路径；减少透明度时改为不透明面板。</p><div class="glass-demo"><div class="glass-swatch">CSS blur</div></div><div class="verdict">可作为全浏览器降级</div></article>
+        <article class="card glass-svg"><span class="card-label">PATH B / ENHANCEMENT</span><h2>CSS + SVG 位移</h2><p>用于 Chromium 增强；Safari / Firefox 不应依赖该 url filter。</p><div class="glass-demo"><div class="glass-swatch">SVG displacement</div></div><div class="verdict">只做增强，不做契约</div></article>
+        <article class="card glass-solid"><span class="card-label">PATH C / SAFE FALLBACK</span><h2>不透明回退</h2><p>forced-colors、reduced-transparency 或用户暂停时仍保持按钮可读、可聚焦。</p><div class="glass-demo"><div class="glass-swatch">solid surface</div></div><div class="verdict">无透明度也能完成操作</div></article>
+        <article class="card"><span class="card-label">WEBGL / WINDOW PROTOTYPE</span><h2>透镜路径</h2><p>首页 WebGL 透镜已在 `window-prototype.html` 做过桌面管线验证；本页不重复实现生产 shader。</p><div class="glass-demo"><div class="glass-swatch">WebGL lens →</div></div><div class="verdict">D4 需在真机确认</div></article>
+      </section>
+    </section>
+    <section class="notes"><div class="note"><b>可接受</b>稀疏雪、半透明雾、静态 poster、CSS 玻璃和明确的暂停开关。</div><div class="note"><b>需要真机</b>WebGL 透镜、Safari 合成、移动端帧时、发热和显存。</div><div class="note"><b>不采用</b>高密度粒子、亮水滴上文字、依赖 SVG url filter 的核心交互。</div></section>
+    <footer class="footer"><span>D4 / DESIGN VALIDATION ONLY</span><span><a href="./window-prototype.html">Window</a> · <a href="./desk-prototype.html">Desk</a> · <a href="./architecture-map.html">架构图</a></span></footer>
+  </main>
+  <script>
+    (() => {
+      const lab = document.getElementById('lab');
+      const snow = document.getElementById('snow');
+      const fog = document.getElementById('fog');
+      const fogRange = document.getElementById('fogRange');
+      const fogValue = document.getElementById('fogValue');
+      const pause = document.getElementById('pause');
+      const runtime = document.getElementById('runtime');
+      const sceneState = document.getElementById('sceneState');
+      const fpsLabel = document.getElementById('fpsLabel');
+      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const snowCtx = snow.getContext('2d');
+      const fogCtx = fog.getContext('2d');
+      let density = 'medium';
+      let running = !reduceMotion;
+      let raf = 0;
+      let last = performance.now();
+      let flakes = [];
+      let frameCount = 0;
+      const counts = { low: 42, medium: 96, high: 180 };
+      function resize() { const dpr = Math.min(devicePixelRatio || 1, 1.25); const fogScale = .5; snow.width = innerWidth * dpr; snow.height = innerHeight * dpr; fog.width = innerWidth * dpr * fogScale; fog.height = innerHeight * dpr * fogScale; snow.style.width = `${innerWidth}px`; snow.style.height = `${innerHeight}px`; fog.style.width = `${innerWidth}px`; fog.style.height = `${innerHeight}px`; flakes = Array.from({ length: counts[density] }, (_, i) => ({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: 1 + Math.random() * (density === 'high' ? 2.2 : 1.6), v: .18 + Math.random() * (density === 'high' ? .8 : .45), drift: (Math.random() - .5) * .25 + Math.sin(i) * .05 })); }
+      function draw(now) { if (!running) return; raf = requestAnimationFrame(draw); const dt = Math.min(32, now - last); last = now; const dpr = Math.min(devicePixelRatio || 1, 1.25); const fogScale = .5; snowCtx.setTransform(dpr, 0, 0, dpr, 0, 0); fogCtx.setTransform(dpr * fogScale, 0, 0, dpr * fogScale, 0, 0); snowCtx.clearRect(0, 0, innerWidth, innerHeight); fogCtx.clearRect(0, 0, innerWidth, innerHeight); for (const f of flakes) { f.y += f.v * dt; f.x += f.drift * dt; if (f.y > innerHeight + 8) { f.y = -8; f.x = Math.random() * innerWidth; } snowCtx.beginPath(); snowCtx.fillStyle = `rgba(246,249,246,${density === 'high' ? .48 : .32})`; snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2); snowCtx.fill(); } const fogAmount = Number(fogRange.value) / 100; const gradient = fogCtx.createLinearGradient(0, innerHeight * .35, 0, innerHeight); gradient.addColorStop(0, `rgba(220,233,230,${fogAmount * .02})`); gradient.addColorStop(.55, `rgba(220,233,230,${fogAmount * .12})`); gradient.addColorStop(1, `rgba(220,233,230,${fogAmount * .38})`); fogCtx.fillStyle = gradient; fogCtx.fillRect(0, 0, innerWidth, innerHeight); frameCount += 1; if (frameCount % 45 === 0) { const fps = Math.round(1000 / Math.max(1, dt)); fpsLabel.textContent = `2D effect loop · ~${fps} fps`; } }
+      function setRunning(next) { running = next && !reduceMotion; pause.setAttribute('aria-pressed', String(!running)); pause.textContent = running ? '暂停效果' : '继续效果'; lab.classList.toggle('is-paused', !running); if (running) { last = performance.now(); raf = requestAnimationFrame(draw); } else cancelAnimationFrame(raf); }
+      document.querySelectorAll('[data-density]').forEach((button) => button.addEventListener('click', () => { density = button.dataset.density; document.querySelectorAll('[data-density]').forEach((item) => item.setAttribute('aria-pressed', String(item === button))); sceneState.textContent = `snow / fog / ${density}`; resize(); }));
+      fogRange.addEventListener('input', () => { fogValue.textContent = `${fogRange.value}%`; });
+      pause.addEventListener('click', () => setRunning(!running));
+      window.addEventListener('resize', resize, { passive: true });
+      if (!snowCtx || !fogCtx) { runtime.textContent = 'CANVAS / FALLBACK'; setRunning(false); } else { runtime.textContent = reduceMotion ? 'CANVAS / REDUCED MOTION' : 'CANVAS / RUNNING'; resize(); setRunning(running); }
+    })();
+  </script>
+</body>
+</html>

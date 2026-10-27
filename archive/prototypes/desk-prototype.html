@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Openblog / Desk prototype</title>
+  <style>
+    :root {
+      --ink: #17272d;
+      --muted: #68777c;
+      --paper: #edf1ef;
+      --surface: #fbfcfa;
+      --surface-deep: #e1e9e6;
+      --line: rgba(23, 39, 45, .15);
+      --line-strong: rgba(23, 39, 45, .30);
+      --accent: #1d716a;
+      --accent-soft: #d7ece7;
+      --warning: #996719;
+      --warning-soft: #f4e8c9;
+      --night: #20343b;
+      --font-sans: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--paper); }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--font-sans); line-height: 1.6; }
+    button, a { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #cf6d2e; outline-offset: 3px; }
+    .sill { height: 10px; background: linear-gradient(90deg, #2b4850 0%, #78918f 48%, #243c43 100%); }
+    .page { width: min(1480px, calc(100% - 48px)); margin: 0 auto; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 0; border-bottom: 1px solid var(--line-strong); }
+    .brand { display: inline-flex; align-items: center; gap: 10px; border: 0; padding: 0; background: transparent; cursor: pointer; font: 600 13px var(--font-mono); letter-spacing: .04em; }
+    .mark { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 19px; height: 19px; }
+    .mark i { border: 1px solid var(--ink); background: var(--surface); }
+    .nav { display: flex; align-items: center; gap: 4px; }
+    .nav button, .top-action { min-height: 42px; border: 1px solid transparent; border-radius: 999px; padding: 7px 12px; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; }
+    .nav button:hover, .nav button[aria-current="page"], .top-action:hover { border-color: var(--line); color: var(--ink); background: var(--surface); }
+    .top-action { border-color: var(--line); font: 11px var(--font-mono); }
+    .workspace { display: grid; grid-template-columns: 200px minmax(0, 680px) 240px; gap: 48px; align-items: start; padding: 52px 0 76px; }
+    .toc, .context { position: sticky; top: 18px; align-self: start; }
+    .kicker { color: var(--accent); font: 600 10px/1.2 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; }
+    .toc h1 { margin: 10px 0 18px; font-size: 18px; line-height: 1.25; font-weight: 650; }
+    .toc-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+    .toc-link { display: grid; grid-template-columns: auto 1fr; gap: 9px; border: 1px solid transparent; border-radius: 4px; padding: 7px 9px; color: var(--muted); cursor: pointer; text-align: left; font-size: 12px; }
+    .toc-link:hover, .toc-link.is-active { border-color: var(--line); background: var(--surface); color: var(--ink); }
+    .toc-number { color: var(--muted); font: 10px var(--font-mono); }
+    .toc-note { margin-top: 24px; padding-top: 14px; border-top: 1px dashed var(--line-strong); color: var(--muted); font-size: 11px; }
+    .toc-note b { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 650; }
+    .toc-toggle { display: none; width: 100%; min-height: 42px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); cursor: pointer; text-align: left; }
+    .content { min-width: 0; }
+    .content-header { padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+    .breadcrumb { color: var(--muted); font: 11px var(--font-mono); }
+    .question { margin-top: 19px; color: var(--accent); font-size: 14px; }
+    .content h2 { margin: 8px 0 0; font-size: clamp(31px, 4.5vw, 48px); line-height: 1.16; letter-spacing: -.02em; font-weight: 650; }
+    .thesis { max-width: 620px; margin-top: 15px; color: var(--muted); font-size: 15px; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 21px; color: var(--muted); font: 11px var(--font-mono); }
+    .meta-row span + span::before { content: "·"; margin-right: 14px; color: var(--line-strong); }
+    .fixture { display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; border: 1px dashed var(--warning); padding: 5px 8px; color: var(--warning); background: var(--warning-soft); font: 600 10px var(--font-mono); }
+    .fixture i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .article-body { padding-top: 30px; font-size: 17px; line-height: 1.82; }
+    .article-body h3 { margin: 30px 0 10px; font-size: 23px; line-height: 1.35; font-weight: 650; }
+    .article-body h3:first-child { margin-top: 0; }
+    .article-body p { margin: 0 0 17px; color: #526268; }
+    .article-body p:last-child { margin-bottom: 0; }
+    .placeholder { height: 14px; margin: 12px 0; border-radius: 2px; background: var(--surface-deep); }
+    .placeholder.medium { width: 82%; }
+    .placeholder.short { width: 56%; }
+    .placeholder.long { width: 94%; }
+    .callout { margin: 28px 0; border-left: 3px solid var(--accent); padding: 13px 16px; background: var(--accent-soft); color: #365b57; font-size: 14px; }
+    .context { padding-left: 18px; border-left: 1px solid var(--line); }
+    .context-group { padding: 0 0 20px; margin-bottom: 19px; border-bottom: 1px solid var(--line); }
+    .context-group:last-child { margin-bottom: 0; border-bottom: 0; }
+    .context-group h3 { margin: 0; color: var(--ink); font: 600 10px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+    .context-group p, .context-group span { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+    .stance { display: inline-block; width: fit-content; border: 1px solid var(--line); padding: 3px 6px; color: var(--ink) !important; font: 10px var(--font-mono) !important; }
+    .backlinks { display: grid; gap: 6px; }
+    .backlinks a { color: var(--accent); font-size: 12px; text-underline-offset: 3px; }
+    .context-note { margin-top: 22px; color: var(--muted); font: 10px/1.55 var(--font-mono); }
+    .index-view { display: none; }
+    .index-view.is-active { display: block; }
+    .article-view.is-hidden { display: none; }
+    .is-index-view .workspace { grid-template-columns: 200px minmax(0, 1fr); }
+    .is-index-view .context { display: none; }
+    .is-index-view .content { max-width: 960px; }
+    .index-header { display: flex; align-items: end; justify-content: space-between; gap: 25px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+    .index-header h2 { margin-top: 10px; }
+    .index-header p { max-width: 330px; color: var(--muted); font-size: 13px; text-align: right; }
+    .writing-list { margin-top: 22px; border-top: 1px solid var(--line-strong); }
+    .writing-row { display: grid; grid-template-columns: 95px minmax(0, 1fr) auto; gap: 20px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .writing-row time { color: var(--muted); font: 11px var(--font-mono); }
+    .writing-row h3 { margin: 0; font-size: 16px; font-weight: 650; }
+    .writing-row p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .writing-row small { color: var(--muted); font: 10px var(--font-mono); white-space: nowrap; }
+    .index-empty { display: none; place-items: center; min-height: 350px; border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line); text-align: center; }
+    .index-empty.is-visible { display: grid; }
+    .empty-inner { max-width: 380px; padding: 26px; }
+    .empty-mark { display: grid; place-items: center; width: 42px; height: 42px; margin: 0 auto 17px; border: 1px solid var(--line-strong); border-radius: 50%; font: 21px var(--font-mono); }
+    .empty-inner h3 { margin: 0; font-size: 22px; font-weight: 650; }
+    .empty-inner p { margin-top: 7px; color: var(--muted); font-size: 13px; }
+    .view-switch { display: flex; gap: 5px; margin-top: 23px; }
+    .view-switch button { min-height: 38px; border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; }
+    .view-switch button[aria-pressed="true"], .view-switch button:hover { color: var(--ink); background: var(--surface); }
+    .footer { display: flex; justify-content: space-between; gap: 20px; padding: 20px 0 32px; border-top: 1px solid var(--line-strong); color: var(--muted); font: 10px var(--font-mono); }
+    .footer a { color: inherit; text-underline-offset: 3px; }
+    @media (max-width: 1260px) {
+      .workspace { grid-template-columns: 200px minmax(0, 680px); gap: 36px; }
+      .context { grid-column: 2; position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; padding: 22px 0 0; border-top: 1px solid var(--line); border-left: 0; }
+      .context-group { margin: 0; }
+      .context-note { grid-column: 1 / -1; margin-top: 0; }
+    }
+    @media (max-width: 900px) {
+      .workspace, .is-index-view .workspace { grid-template-columns: 1fr; gap: 28px; padding-top: 32px; }
+      .toc { position: static; }
+      .toc-toggle { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; }
+      .toc-toggle::after { content: "＋"; font: 18px var(--font-mono); }
+      .toc.is-open .toc-toggle::after { content: "－"; }
+      .toc-list, .toc-note { display: none; }
+      .toc.is-open .toc-list, .toc.is-open .toc-note { display: grid; }
+      .toc-list { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 8px; }
+      .toc-note { margin-top: 12px; }
+      .context { grid-column: auto; }
+    }
+    @media (max-width: 620px) {
+      .page { width: min(100% - 28px, 1480px); }
+      .topbar { align-items: start; flex-direction: column; gap: 12px; padding-block: 17px; }
+      .nav { width: 100%; overflow-x: auto; }
+      .top-action { position: absolute; top: 18px; right: 14px; }
+      .workspace { padding-top: 26px; }
+      .toc-list { grid-template-columns: 1fr; }
+      .index-header { display: block; }
+      .index-header p { margin-top: 10px; text-align: left; }
+      .writing-row { grid-template-columns: 1fr; gap: 5px; }
+      .writing-row small { white-space: normal; }
+      .context { display: block; }
+      .context-group { padding: 0 0 16px; margin-bottom: 16px; }
+      .article-body { font-size: 16px; }
+      .footer { display: block; }
+      .footer a { display: inline-block; margin-top: 9px; margin-right: 14px; }
+    }
+    @media (forced-colors: active) {
+      * { box-shadow: none !important; }
+      .nav button, .top-action, .toc-toggle, .toc-link, .view-switch button, .callout, .index-empty { border: 1px solid ButtonText; }
+      .sill { background: ButtonText; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sill" aria-hidden="true"></div>
+  <div class="page">
+    <header class="topbar">
+      <button class="brand" type="button" data-action="home" aria-label="回到首页"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>OPENBLOG</button>
+      <nav class="nav" aria-label="桌页导航">
+        <button type="button" data-view-route="index" aria-current="page">写作</button>
+        <button type="button" data-view-route="article">当前结构样例</button>
+      </nav>
+      <button class="top-action" type="button" data-action="search">⌕ 搜索（占位）</button>
+    </header>
+
+    <main class="workspace">
+      <aside class="toc" id="toc">
+        <span class="kicker">DESK / CONTENT</span>
+        <h1>信息先于装饰</h1>
+        <button class="toc-toggle" type="button" id="tocToggle" aria-expanded="false">目录 / 当前结构</button>
+        <ol class="toc-list">
+          <li><button class="toc-link is-active" type="button" data-anchor="intro"><span class="toc-number">01</span><span>问题与论点</span></button></li>
+          <li><button class="toc-link" type="button" data-anchor="body"><span class="toc-number">02</span><span>正文排版</span></button></li>
+          <li><button class="toc-link" type="button" data-anchor="revision"><span class="toc-number">03</span><span>修订与引用</span></button></li>
+        </ol>
+        <div class="toc-note"><b>Desk 规则</b>不使用装饰性动效；左侧承载目录，右侧承载论点、立场、修订和被引用。</div>
+      </aside>
+
+      <section class="content" aria-live="polite">
+        <div class="article-view" data-view="article">
+          <header class="content-header" id="intro">
+            <div class="breadcrumb">/writing/[slug] · DESK</div>
+            <div class="question">问题位置：一篇文章要先回答什么？</div>
+            <h2>文章标题位置（结构样例）</h2>
+            <p class="thesis">论点位置：用一句清楚的话说明这篇文章现在主张什么。</p>
+            <div class="meta-row"><span>STRUCTURE FIXTURE</span><span>2026.10.26</span><span>阅读时长占位</span><span>观点待确认</span></div>
+            <div class="fixture"><i></i>非发布内容 / 仅验证版式，不代表真实文章</div>
+          </header>
+          <article class="article-body" id="body">
+            <h3>正文排版区域</h3>
+            <p>这里保留真实文章进入后的空间关系：标题、论点、元信息、正文和旁注应该各自有明确层级。</p>
+            <div class="placeholder long" aria-hidden="true"></div>
+            <div class="placeholder medium" aria-hidden="true"></div>
+            <div class="placeholder short" aria-hidden="true"></div>
+            <p>当前不填入虚构论据或个人经历。内容契约确定后，文章正文、引用、图片、表格和代码块会在这个区域按同一套规则渲染。</p>
+            <div class="callout">结构校验：正文宽度约 680px；右栏只在确实有语境内容时出现，不用空卡片占位。</div>
+            <h3 id="revision">修订、引用与回看</h3>
+            <p>版本历史会在右侧形成可追溯的修订时间线；这不是装饰，而是作者如何改变想法的公开记录。</p>
+          </article>
+        </div>
+
+        <div class="index-view is-active" data-view="index">
+          <header class="index-header">
+            <div><div class="breadcrumb">/writing · DESK</div><h2>写作</h2></div>
+            <p>索引使用排版行，不用缩略图卡片网格。下方内容只是结构 fixture。</p>
+          </header>
+          <div class="view-switch" role="group" aria-label="索引状态">
+            <button type="button" data-index-mode="fixture" aria-pressed="true">结构 fixture</button>
+            <button type="button" data-index-mode="empty" aria-pressed="false">空状态</button>
+          </div>
+          <div class="writing-list" data-index-list>
+            <div class="writing-row"><time>DATE</time><div><h3>文章标题位置</h3><p>摘要位置 · 话题 / 系列 / 立场</p></div><small>ESSAY</small></div>
+            <div class="writing-row"><time>DATE</time><div><h3>问题标题位置</h3><p>摘要位置 · 修订记录由内容契约生成</p></div><small>QA</small></div>
+            <div class="writing-row"><time>DATE</time><div><h3>笔记标题位置</h3><p>常绿内容的位置 · 被引用关系待接入</p></div><small>NOTE</small></div>
+          </div>
+          <div class="index-empty" data-index-empty>
+            <div class="empty-inner"><div class="empty-mark" aria-hidden="true">∅</div><h3>暂无已发布文章</h3><p>不填假标题、不写口号；等第一篇内容通过发布流程后，排版行会从这里开始。</p></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="context" aria-label="文章语境">
+        <div class="context-group"><h3>THESIS</h3><p>论点位置</p></div>
+        <div class="context-group"><h3>QUESTION</h3><p>问题位置</p></div>
+        <div class="context-group"><h3>STANCE</h3><span class="stance">暂定 · confidence —</span></div>
+        <div class="context-group"><h3>MATURITY</h3><p>成长中 / 成形 / 常绿</p></div>
+        <div class="context-group"><h3>REVISIONS</h3><p>修订时间线位置</p></div>
+        <div class="context-group"><h3>BACKLINKS</h3><div class="backlinks"><a href="#">被引用内容位置</a><a href="#">系列导航位置</a></div></div>
+        <p class="context-note">语境栏不是装饰。没有真实语境字段时，它会退让给正文，不保留空白卡片。</p>
+      </aside>
+    </main>
+
+    <footer class="footer"><span>D2 / DESK PROTOTYPE · STRUCTURE FIXTURE ONLY</span><span><a href="./window-prototype.html">Window</a> · <a href="./ia-prototype.html">IA</a> · <a href="./architecture-map.html">架构图</a></span></footer>
+  </div>
+  <script>
+    (() => {
+      const articleView = document.querySelector('[data-view="article"]');
+      const indexView = document.querySelector('[data-view="index"]');
+      const routeButtons = [...document.querySelectorAll('[data-view-route]')];
+      const toc = document.getElementById('toc');
+      const tocToggle = document.getElementById('tocToggle');
+      const indexList = document.querySelector('[data-index-list]');
+      const indexEmpty = document.querySelector('[data-index-empty]');
+      const indexButtons = [...document.querySelectorAll('[data-index-mode]')];
+      function setView(view) {
+        const article = view === 'article';
+        document.body.classList.toggle('is-index-view', !article);
+        articleView.classList.toggle('is-hidden', !article);
+        indexView.classList.toggle('is-active', !article);
+        routeButtons.forEach((button) => {
+          const active = button.dataset.viewRoute === view;
+          button.setAttribute('aria-current', active ? 'page' : 'false');
+        });
+        document.title = article ? 'Openblog / Desk article fixture' : 'Openblog / Desk index fixture';
+      }
+      function setIndexMode(mode) {
+        const fixture = mode === 'fixture';
+        indexList.hidden = !fixture;
+        indexEmpty.classList.toggle('is-visible', !fixture);
+        indexButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.indexMode === mode)));
+      }
+      routeButtons.forEach((button) => button.addEventListener('click', () => setView(button.dataset.viewRoute)));
+      indexButtons.forEach((button) => button.addEventListener('click', () => setIndexMode(button.dataset.indexMode)));
+      tocToggle.addEventListener('click', () => {
+        const open = toc.classList.toggle('is-open');
+        tocToggle.setAttribute('aria-expanded', String(open));
+      });
+      document.querySelectorAll('.toc-link').forEach((button) => button.addEventListener('click', () => {
+        document.querySelectorAll('.toc-link').forEach((item) => item.classList.toggle('is-active', item === button));
+        const target = document.getElementById(button.dataset.anchor);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }));
+      document.querySelector('[data-action="home"]').addEventListener('click', () => { location.hash = 'window'; });
+      document.querySelector('[data-action="search"]').addEventListener('click', () => { document.title = 'Openblog / Search placeholder'; });
+      setView('index');
+      setIndexMode('fixture');
+    })();
+  </script>
+</body>
+</html>

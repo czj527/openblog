@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Openblog Window prototype / D1 visual validation">
+  <title>Openblog / Window prototype</title>
+  <style>
+    :root {
+      --ink: #f7faf7;
+      --ink-muted: rgba(247, 250, 247, .72);
+      --ink-faint: rgba(247, 250, 247, .55);
+      --glass: rgba(18, 31, 34, .22);
+      --glass-solid: rgba(18, 31, 34, .82);
+      --glass-line: rgba(247, 250, 247, .34);
+      --accent: #e9c888;
+      --safe-scrim-top: rgba(10, 25, 29, .40);
+      --safe-scrim-bottom: rgba(7, 19, 23, .64);
+      --font-sans: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-width: 320px; height: 100%; margin: 0; overflow: hidden; background: #152a31; }
+    body { color: var(--ink); font-family: var(--font-sans); letter-spacing: 0; }
+    button, a { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #f1bd72; outline-offset: 4px; }
+    .hero { position: relative; width: 100%; height: 100dvh; isolation: isolate; overflow: hidden; background: #152a31; }
+    .poster, .fx-canvas, .scrim, .scene-vignette { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .poster { z-index: -5; object-fit: cover; object-position: center center; background: linear-gradient(150deg, #c9d8d8 0%, #759296 45%, #1d343b 100%); }
+    .fx-canvas { z-index: -4; pointer-events: none; opacity: .80; transition: opacity 480ms ease; }
+    .fx-canvas.is-paused, .fx-canvas.is-static { opacity: 0; }
+    .scrim { z-index: -2; pointer-events: none; background: linear-gradient(180deg, var(--safe-scrim-top) 0%, rgba(7,19,23,.02) 24%, rgba(7,19,23,.02) 58%, var(--safe-scrim-bottom) 100%); }
+    .scene-vignette { z-index: -1; pointer-events: none; background: radial-gradient(ellipse at center, transparent 35%, rgba(4, 12, 15, .22) 100%); }
+    .topbar { position: absolute; z-index: 3; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: clamp(18px, 3vw, 34px) clamp(18px, 4vw, 58px); }
+    .brand { display: inline-flex; align-items: center; gap: 11px; border: 0; padding: 0; color: var(--ink); background: transparent; cursor: pointer; font: 600 13px var(--font-mono); letter-spacing: .04em; text-shadow: 0 1px 12px rgba(0,0,0,.4); }
+    .brand-mark { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 21px; height: 21px; }
+    .brand-mark i { display: block; border: 1px solid currentColor; background: rgba(255,255,255,.08); }
+    .nav { display: flex; align-items: center; gap: 3px; }
+    .nav button, .utility button { min-height: 44px; border: 1px solid transparent; border-radius: 999px; padding: 8px 13px; background: transparent; cursor: pointer; color: var(--ink); font-size: 13px; text-shadow: 0 1px 12px rgba(0,0,0,.4); }
+    .nav button:hover, .utility button:hover { border-color: var(--glass-line); background: rgba(14, 28, 32, .24); }
+    .utility { display: flex; align-items: center; gap: 2px; }
+    .utility button { color: var(--ink-muted); font: 11px var(--font-mono); }
+    .centerpiece { position: absolute; z-index: 2; top: 45%; left: 50%; width: min(520px, calc(100% - 40px)); transform: translate(-50%, -50%); text-align: center; }
+    .centerpiece .eyebrow { color: var(--ink-muted); font: 10px var(--font-mono); letter-spacing: .13em; text-transform: uppercase; text-shadow: 0 1px 14px rgba(0,0,0,.55); }
+    .centerpiece h1 { margin: 13px 0 0; font-size: clamp(26px, 4vw, 52px); line-height: 1.10; letter-spacing: -.02em; font-weight: 520; text-shadow: 0 2px 24px rgba(0,0,0,.35); }
+    .centerpiece p { max-width: 450px; margin: 16px auto 0; color: var(--ink-muted); font-size: 13px; line-height: 1.7; text-shadow: 0 1px 14px rgba(0,0,0,.55); }
+    .entry { min-height: 48px; margin-top: 25px; border: 1px solid rgba(255,255,255,.62); border-radius: 999px; padding: 10px 19px; background: rgba(15, 33, 37, .25); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 10px 30px rgba(2, 12, 15, .18); color: var(--ink); cursor: pointer; backdrop-filter: blur(14px) saturate(125%); transition: background 180ms ease, transform 180ms ease; }
+    .entry:hover { background: rgba(15, 33, 37, .42); transform: translateY(-1px); }
+    .hud { position: absolute; z-index: 3; left: clamp(18px, 4vw, 58px); bottom: clamp(18px, 4vw, 38px); display: grid; gap: 6px; color: var(--ink-muted); font: 11px/1.45 var(--font-mono); text-shadow: 0 1px 12px rgba(0,0,0,.55); }
+    .hud button { width: fit-content; border: 0; border-bottom: 1px solid rgba(255,255,255,.42); padding: 0 0 2px; background: transparent; color: var(--ink-muted); cursor: pointer; font: inherit; }
+    .hud button:hover { color: var(--ink); border-color: var(--ink); }
+    .hud strong { color: var(--ink); font-weight: 600; }
+    .corner-note { position: absolute; z-index: 3; right: clamp(18px, 4vw, 58px); bottom: clamp(18px, 4vw, 38px); color: var(--ink-faint); font: 10px var(--font-mono); text-align: right; text-shadow: 0 1px 12px rgba(0,0,0,.5); }
+    .corner-note span { display: block; }
+    .panel-backdrop { position: fixed; z-index: 8; inset: 0; display: none; background: rgba(2, 10, 13, .30); }
+    .panel-backdrop.is-open { display: block; }
+    .control-panel { position: fixed; z-index: 9; top: 18px; right: 18px; width: min(340px, calc(100% - 36px)); transform: translateX(calc(100% + 26px)); border: 1px solid var(--glass-line); border-radius: 10px; padding: 18px; background: var(--glass-solid); box-shadow: 0 18px 60px rgba(0,0,0,.3); backdrop-filter: blur(18px); transition: transform 220ms ease; }
+    .control-panel.is-open { transform: translateX(0); }
+    .panel-header { display: flex; align-items: start; justify-content: space-between; gap: 15px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.17); }
+    .panel-header h2 { margin: 0; font-size: 16px; font-weight: 600; }
+    .panel-header p { margin: 4px 0 0; color: var(--ink-muted); font-size: 11px; }
+    .close-panel { width: 36px; height: 36px; border: 1px solid rgba(255,255,255,.2); border-radius: 50%; background: transparent; cursor: pointer; font-size: 18px; line-height: 1; }
+    .control-group { display: grid; gap: 8px; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .control-group:last-of-type { border-bottom: 0; }
+    .control-group label, .control-group legend { color: var(--ink-muted); font: 10px var(--font-mono); text-transform: uppercase; letter-spacing: .05em; }
+    .segmented { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+    .segmented button, .panel-action { min-height: 40px; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; background: rgba(255,255,255,.06); color: var(--ink-muted); cursor: pointer; font-size: 12px; }
+    .segmented button:hover, .segmented button[aria-pressed="true"], .panel-action:hover { border-color: rgba(255,255,255,.55); background: rgba(255,255,255,.14); color: var(--ink); }
+    .range-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .range-value { min-width: 36px; color: var(--ink); font: 11px var(--font-mono); text-align: right; }
+    .panel-action { padding: 8px 12px; }
+    .panel-footer { padding-top: 14px; color: var(--ink-faint); font-size: 10px; line-height: 1.5; }
+    .fallback { position: fixed; z-index: 7; inset: 0; display: none; place-items: center; padding: 28px; background: rgba(18, 36, 42, .10); pointer-events: none; }
+    .fallback.is-visible { display: grid; }
+    .fallback span { border: 1px solid rgba(255,255,255,.32); border-radius: 5px; padding: 8px 10px; background: rgba(12,25,29,.5); color: var(--ink-muted); font: 10px var(--font-mono); }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); }
+    @media (max-width: 720px) {
+      .topbar { align-items: start; }
+      .nav { position: absolute; top: 72px; left: 18px; }
+      .nav button { padding-inline: 9px; }
+      .utility { margin-left: auto; }
+      .centerpiece { top: 48%; }
+      .centerpiece h1 { font-size: 34px; }
+      .centerpiece p { font-size: 12px; }
+      .corner-note { display: none; }
+      .panel-backdrop.is-open { pointer-events: auto; }
+    }
+    @media (max-width: 430px) {
+      .topbar { padding: 16px 16px; }
+      .nav { top: 65px; left: 16px; }
+      .nav button { min-height: 40px; padding: 7px 9px; font-size: 12px; }
+      .utility button { min-height: 40px; padding-inline: 9px; }
+      .centerpiece { width: calc(100% - 32px); }
+      .centerpiece h1 { font-size: 31px; }
+      .centerpiece p { margin-top: 12px; }
+      .entry { margin-top: 19px; }
+      .hud { left: 16px; bottom: 16px; font-size: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+      .fx-canvas { display: none; }
+    }
+    @media (prefers-reduced-transparency: reduce) {
+      .entry, .control-panel { background: #172d33; backdrop-filter: none; }
+    }
+    @media (forced-colors: active) {
+      .fx-canvas, .scrim, .scene-vignette { display: none; }
+      .entry, .control-panel, .close-panel, .segmented button, .panel-action { border: 1px solid ButtonText; background: Canvas; color: CanvasText; backdrop-filter: none; }
+      .poster { filter: grayscale(1) contrast(1.15); }
+    }
+  </style>
+</head>
+<body>
+  <main class="hero" id="hero">
+    <img class="poster" id="poster" src="../../../_assets/raw/a/a-winter-v1.jpg" alt="雪后的山谷、湖面与远山，一间小屋的窗户透出微弱暖光">
+    <canvas class="fx-canvas" id="fxCanvas" aria-hidden="true"></canvas>
+    <div class="scrim" aria-hidden="true"></div>
+    <div class="scene-vignette" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <button class="brand" type="button" data-action="home" aria-label="回到首页">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        OPENBLOG
+      </button>
+      <nav class="nav" aria-label="首页导航">
+        <button type="button" data-action="writing">写作</button>
+        <button type="button" data-action="plan" hidden>规划</button>
+      </nav>
+      <div class="utility" aria-label="首页工具">
+        <button type="button" data-action="pause" id="pauseButton">暂停动效</button>
+        <button type="button" data-action="panel" aria-expanded="false" aria-controls="controlPanel">窗外</button>
+      </div>
+    </header>
+
+    <section class="centerpiece" aria-labelledby="heroTitle">
+      <div class="eyebrow">WINDOW / D1 VISUAL PROTOTYPE</div>
+      <h1 id="heroTitle">让世界先停在窗外</h1>
+      <p>视觉场景是想象的，状态可以是真的。这里先验证底图、入口与文字安全区，内容会在二级页面展开。</p>
+      <button class="entry" type="button" data-action="writing">进入写作</button>
+    </section>
+
+    <div class="hud" aria-label="场景状态">
+      <div><strong id="placeLabel">作者所在城市</strong> · <span id="seasonLabel">冬</span> · <span id="weatherLabel">晴</span></div>
+      <div id="timeLabel">--:-- · 预览状态</div>
+      <button type="button" data-action="panel">打开窗外设置</button>
+    </div>
+    <div class="corner-note" aria-hidden="true"><span>STATIC POSTER + WEBGL ENHANCEMENT</span><span id="renderLabel">poster ready · enhancement loading</span></div>
+
+    <div class="fallback" id="fallback" role="status" aria-live="polite"><span>已使用静态 poster · 动态增强不可用</span></div>
+
+    <div class="panel-backdrop" id="panelBackdrop" data-action="close-panel"></div>
+    <aside class="control-panel" id="controlPanel" aria-labelledby="panelTitle" aria-hidden="true">
+      <div class="panel-header">
+        <div><h2 id="panelTitle">窗外</h2><p>手动预览只保存在本地，不上报。</p></div>
+        <button class="close-panel" type="button" data-action="close-panel" aria-label="关闭窗外设置">×</button>
+      </div>
+      <fieldset class="control-group">
+        <legend>季节预览</legend>
+        <div class="segmented" role="group" aria-label="季节预览">
+          <button type="button" data-season="春" aria-pressed="false">春</button>
+          <button type="button" data-season="夏" aria-pressed="false">夏</button>
+          <button type="button" data-season="秋" aria-pressed="false">秋</button>
+          <button type="button" data-season="冬" aria-pressed="true">冬</button>
+        </div>
+      </fieldset>
+      <fieldset class="control-group">
+        <legend>天气预览</legend>
+        <div class="segmented" role="group" aria-label="天气预览">
+          <button type="button" data-weather="晴" aria-pressed="true">晴</button>
+          <button type="button" data-weather="阴" aria-pressed="false">阴</button>
+          <button type="button" data-weather="雨" aria-pressed="false">雨</button>
+          <button type="button" data-weather="雾" aria-pressed="false">雾</button>
+        </div>
+      </fieldset>
+      <div class="control-group">
+        <label for="intensity">雨雾强度</label>
+        <div class="range-row"><input id="intensity" type="range" min="0" max="100" value="42"><span class="range-value" id="intensityValue">42%</span></div>
+      </div>
+      <div class="control-group">
+        <button class="panel-action" type="button" data-action="real">回到真实状态</button>
+      </div>
+      <div class="panel-footer">D1 验证项：静态 poster、轻量增强、手动覆盖、暂停动效、WebGL 失败回退。真实天气 provider 和完整四季资产属于后续设计门。</div>
+    </aside>
+    <p class="sr-only" id="statusMessage" aria-live="polite"></p>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+      const hero = document.getElementById('hero');
+      const canvas = document.getElementById('fxCanvas');
+      const gl = canvas.getContext('webgl2', { alpha: true, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false });
+      const poster = document.getElementById('poster');
+      const fallback = document.getElementById('fallback');
+      const renderLabel = document.getElementById('renderLabel');
+      const pauseButton = document.getElementById('pauseButton');
+      const panel = document.getElementById('controlPanel');
+      const panelBackdrop = document.getElementById('panelBackdrop');
+      const statusMessage = document.getElementById('statusMessage');
+      const seasonLabel = document.getElementById('seasonLabel');
+      const weatherLabel = document.getElementById('weatherLabel');
+      const intensity = document.getElementById('intensity');
+      const intensityValue = document.getElementById('intensityValue');
+      const timeLabel = document.getElementById('timeLabel');
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      const reducedTransparency = matchMedia('(prefers-reduced-transparency: reduce)');
+      const stateKey = 'openblog-window-preview';
+      const state = { season: '冬', weather: '晴', intensity: 42, paused: reducedMotion.matches, real: false };
+      let raf = 0;
+      let running = false;
+      let start = performance.now();
+      let last = start;
+      let frames = 0;
+      let frameTimes = [];
+      let lost = false;
+
+      function announce(message) {
+        statusMessage.textContent = message;
+      }
+
+      function loadState() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(stateKey) || '{}');
+          if (saved.season) state.season = saved.season;
+          if (saved.weather) state.weather = saved.weather;
+          if (Number.isFinite(saved.intensity)) state.intensity = Math.max(0, Math.min(100, saved.intensity));
+          if (saved.paused === true) state.paused = true;
+        } catch (_) { /* local preview state is optional */ }
+      }
+
+      function saveState() {
+        try { localStorage.setItem(stateKey, JSON.stringify({ season: state.season, weather: state.weather, intensity: state.intensity, paused: state.paused })); } catch (_) { /* storage is optional */ }
+      }
+
+      function updateStateUI() {
+        seasonLabel.textContent = state.season;
+        weatherLabel.textContent = state.weather;
+        intensity.value = String(state.intensity);
+        intensityValue.textContent = `${state.intensity}%`;
+        pauseButton.textContent = state.paused ? '继续动效' : '暂停动效';
+        document.querySelectorAll('[data-season]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.season === state.season)));
+        document.querySelectorAll('[data-weather]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.weather === state.weather)));
+      }
+
+      function setState(partial, message) {
+        Object.assign(state, partial);
+        updateStateUI();
+        saveState();
+        if (message) announce(message);
+        if (state.paused) stopFx(); else startFx();
+      }
+
+      function openPanel() {
+        panel.classList.add('is-open');
+        panelBackdrop.classList.add('is-open');
+        panel.setAttribute('aria-hidden', 'false');
+        document.querySelector('[data-action="panel"]').setAttribute('aria-expanded', 'true');
+        panel.querySelector('button').focus();
+      }
+      function closePanel() {
+        panel.classList.remove('is-open');
+        panelBackdrop.classList.remove('is-open');
+        panel.setAttribute('aria-hidden', 'true');
+        document.querySelector('[data-action="panel"]').setAttribute('aria-expanded', 'false');
+      }
+
+      function updateTime() {
+        const now = new Date();
+        timeLabel.textContent = `${now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} · ${state.real ? '真实状态待接入' : '手动预览'}`;
+      }
+      setInterval(updateTime, 30000);
+
+      function showFallback(message) {
+        fallback.classList.add('is-visible');
+        renderLabel.textContent = message || 'poster ready · static fallback';
+        canvas.classList.add('is-static');
+        lost = true;
+      }
+
+      if (reducedTransparency.matches) showFallback('poster ready · transparency reduced');
+      if (!gl) showFallback('poster ready · WebGL2 unavailable');
+
+      const VS = `#version 300 es
+        precision highp float;
+        out vec2 uv;
+        void main() {
+          vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+          uv = p;
+          gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+        }`;
+      const FS = `#version 300 es
+        precision highp float;
+        in vec2 uv;
+        out vec4 color;
+        uniform vec2 uResolution;
+        uniform float uTime;
+        uniform float uIntensity;
+        uniform float uWeather;
+        float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+        float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f); return mix(mix(hash21(i), hash21(i+vec2(1,0)), f.x), mix(hash21(i+vec2(0,1)), hash21(i+vec2(1,1)), f.x), f.y); }
+        float streak(vec2 p, float scale, float speed, float seed) {
+          p.x *= uResolution.x / uResolution.y;
+          vec2 s = p * vec2(scale, scale * .32);
+          s.y += uTime * speed;
+          vec2 cell = floor(s);
+          vec2 f = fract(s) - .5;
+          float n = hash21(cell + seed);
+          float line = smoothstep(.034, 0.0, abs(f.x + sin(f.y * 5.0 + n * 8.0) * .03));
+          float gate = step(.70, n) * smoothstep(.48, .05, abs(f.y));
+          return line * gate;
+        }
+        void main() {
+          vec2 p = uv - .5;
+          float t = uTime;
+          float strength = uIntensity * .0105;
+          float rain = (streak(p, 72.0, 1.4, 2.3) + streak(p + .37, 104.0, 2.0, 7.1)) * strength;
+          float fogNoise = noise(p * 3.2 + vec2(t * .015, -t * .01));
+          float fog = smoothstep(.35, .85, fogNoise) * strength * .8;
+          float weatherMix = smoothstep(.15, .75, uWeather);
+          float alpha = mix(rain, rain + fog, weatherMix) * (0.35 + .65 * smoothstep(.1, .95, uv.y));
+          vec3 tint = mix(vec3(.72, .82, .82), vec3(.86, .92, .91), weatherMix);
+          color = vec4(tint, clamp(alpha, 0.0, .22));
+        }`;
+
+      function compile(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || 'shader error');
+        return shader;
+      }
+      let program;
+      let uniforms;
+      let vao;
+      if (gl && !reducedTransparency.matches) {
+        try {
+          program = gl.createProgram();
+          gl.attachShader(program, compile(gl.VERTEX_SHADER, VS));
+          gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FS));
+          gl.linkProgram(program);
+          if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || 'program link error');
+          uniforms = { resolution: gl.getUniformLocation(program, 'uResolution'), time: gl.getUniformLocation(program, 'uTime'), intensity: gl.getUniformLocation(program, 'uIntensity'), weather: gl.getUniformLocation(program, 'uWeather') };
+          vao = gl.createVertexArray();
+          gl.bindVertexArray(vao);
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        } catch (error) {
+          console.error(error);
+          showFallback('poster ready · shader fallback');
+        }
+      }
+
+      function resize() {
+        if (!gl || lost) return;
+        const dpr = Math.min(devicePixelRatio || 1, 1.25);
+        const width = Math.max(1, Math.round(innerWidth * dpr));
+        const height = Math.max(1, Math.round(innerHeight * dpr));
+        if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+        gl.viewport(0, 0, width, height);
+      }
+      addEventListener('resize', resize, { passive: true });
+      resize();
+
+      function weatherValue() { return state.weather === '雨' ? 1 : state.weather === '雾' ? .85 : state.weather === '阴' ? .55 : .15; }
+      function draw(now) {
+        if (!running || !gl || lost) return;
+        raf = requestAnimationFrame(draw);
+        const dt = now - last; last = now;
+        if (frames > 8) frameTimes.push(dt);
+        if (frameTimes.length > 90) frameTimes.shift();
+        frames += 1;
+        gl.useProgram(program);
+        gl.bindVertexArray(vao);
+        gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+        gl.uniform1f(uniforms.time, (now - start) / 1000);
+        gl.uniform1f(uniforms.intensity, state.intensity / 100 * (state.weather === '晴' ? .22 : 1));
+        gl.uniform1f(uniforms.weather, weatherValue());
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (frames % 30 === 0 && frameTimes.length > 10) {
+          const sorted = [...frameTimes].sort((a, b) => a - b);
+          const p95 = sorted[Math.floor(sorted.length * .95)];
+          renderLabel.textContent = `webgl2 enhancement · p95 ${(1000 / p95).toFixed(0)} fps`;
+          window.__windowStats = { frames, fpsP95: +(1000 / p95).toFixed(1), width: canvas.width, height: canvas.height, reducedMotion: reducedMotion.matches, paused: state.paused };
+        }
+      }
+      function startFx() {
+        if (!gl || !program || lost || reducedMotion.matches || state.paused) return;
+        if (running) return;
+        running = true;
+        canvas.classList.remove('is-paused');
+        last = performance.now();
+        raf = requestAnimationFrame(draw);
+        renderLabel.textContent = 'webgl2 enhancement · running';
+      }
+      function stopFx() {
+        running = false;
+        cancelAnimationFrame(raf);
+        canvas.classList.add('is-paused');
+        renderLabel.textContent = reducedMotion.matches ? 'poster ready · reduced motion' : 'poster ready · paused';
+      }
+      canvas.addEventListener('webglcontextlost', (event) => { event.preventDefault(); stopFx(); showFallback('poster ready · context lost'); });
+      canvas.addEventListener('webglcontextrestored', () => { lost = false; fallback.classList.remove('is-visible'); renderLabel.textContent = 'webgl2 enhancement · restored'; startFx(); });
+      document.addEventListener('visibilitychange', () => { if (document.hidden) stopFx(); else if (!state.paused) startFx(); });
+      reducedMotion.addEventListener?.('change', () => { if (reducedMotion.matches) stopFx(); else if (!state.paused) startFx(); });
+
+      document.addEventListener('click', (event) => {
+        const actionTarget = event.target.closest('[data-action]');
+        if (!actionTarget) return;
+        const action = actionTarget.dataset.action;
+        if (action === 'panel') openPanel();
+        if (action === 'close-panel') closePanel();
+        if (action === 'pause') setState({ paused: !state.paused }, state.paused ? '已暂停首页动效' : '已恢复首页动效');
+        if (action === 'real') setState({ real: true, season: '冬', weather: '晴' }, '真实天气 provider 尚未接入，当前仅恢复默认预览');
+        if (action === 'writing') announce('D0 原型：这里将进入 /writing');
+        if (action === 'home') announce('当前已经是首页');
+      });
+      document.querySelectorAll('[data-season]').forEach((button) => button.addEventListener('click', () => setState({ season: button.dataset.season, real: false }, `已切换到${button.dataset.season}预览`)));
+      document.querySelectorAll('[data-weather]').forEach((button) => button.addEventListener('click', () => setState({ weather: button.dataset.weather, real: false }, `已切换到${button.dataset.weather}预览`)));
+      intensity.addEventListener('input', () => setState({ intensity: Number(intensity.value), real: false }));
+      addEventListener('keydown', (event) => { if (event.key === 'Escape') closePanel(); });
+
+      loadState();
+      updateStateUI();
+      updateTime();
+      if (state.paused || reducedMotion.matches || reducedTransparency.matches) stopFx(); else startFx();
+    })();
+  </script>
+</body>
+</html>

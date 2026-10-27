@@ -1,0 +1,235 @@
+{
+  "schema": "workbench-fixture/v1",
+  "synthetic": true,
+  "notice": "PRIVATE STRUCTURE FIXTURE / NO REAL DATA",
+  "purpose": "工作台四视图、任务筛选和审阅决定的合成结构 fixture；不包含真实账号、项目、任务或审阅内容。",
+  "views": [
+    { "id": "week", "label": "本周", "number": "01" },
+    { "id": "tasks", "label": "任务", "number": "02" },
+    { "id": "projects", "label": "项目", "number": "03" },
+    { "id": "review", "label": "审阅", "number": "04" }
+  ],
+  "taskStatuses": [
+    { "id": "all", "label": "全部" },
+    { "id": "todo", "label": "待开始" },
+    { "id": "doing", "label": "进行中" },
+    { "id": "waiting", "label": "等待" },
+    { "id": "blocked", "label": "阻塞" },
+    { "id": "done", "label": "已完成" }
+  ],
+  "projectStatuses": [
+    { "id": "active", "label": "进行中" },
+    { "id": "waiting", "label": "等待" },
+    { "id": "paused", "label": "暂停" },
+    { "id": "done", "label": "已结束" }
+  ],
+  "reviewStatuses": [
+    { "id": "pending", "label": "待审" },
+    { "id": "approved", "label": "已批准" },
+    { "id": "returned", "label": "已退回" }
+  ],
+  "week": {
+    "range": "周区间占位",
+    "focusTaskIds": [
+      "task-fixture-01",
+      "task-fixture-03",
+      "task-fixture-04",
+      "task-fixture-06"
+    ],
+    "days": [
+      { "id": "mon", "label": "周一", "slot": "安排位置" },
+      { "id": "tue", "label": "周二", "slot": "安排位置" },
+      { "id": "wed", "label": "周三", "slot": "安排位置" },
+      { "id": "thu", "label": "周四", "slot": "安排位置" },
+      { "id": "fri", "label": "周五", "slot": "安排位置" },
+      { "id": "sat", "label": "周六", "slot": "安排位置" },
+      { "id": "sun", "label": "周日", "slot": "安排位置" }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-fixture-01",
+      "code": "T-0001",
+      "title": "任务标题位置 A",
+      "projectId": "project-fixture-01",
+      "status": "doing",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-02",
+      "code": "T-0002",
+      "title": "任务标题位置 B",
+      "projectId": "project-fixture-01",
+      "status": "todo",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-03",
+      "code": "T-0003",
+      "title": "任务标题位置 C",
+      "projectId": "project-fixture-02",
+      "status": "waiting",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-04",
+      "code": "T-0004",
+      "title": "任务标题位置 D",
+      "projectId": "project-fixture-02",
+      "status": "blocked",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-05",
+      "code": "T-0005",
+      "title": "任务标题位置 E",
+      "projectId": "project-fixture-03",
+      "status": "done",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-06",
+      "code": "T-0006",
+      "title": "任务标题位置 F",
+      "projectId": "project-fixture-03",
+      "status": "doing",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-07",
+      "code": "T-0007",
+      "title": "任务标题位置 G",
+      "projectId": "project-fixture-01",
+      "status": "todo",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-08",
+      "code": "T-0008",
+      "title": "任务标题位置 H",
+      "projectId": "project-fixture-04",
+      "status": "waiting",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    }
+  ],
+  "projects": [
+    {
+      "id": "project-fixture-01",
+      "code": "P-0001",
+      "name": "项目名称位置 A",
+      "status": "active",
+      "owner": "角色占位",
+      "phase": "阶段位置",
+      "nextStep": "下一节点位置",
+      "summary": "项目摘要位置"
+    },
+    {
+      "id": "project-fixture-02",
+      "code": "P-0002",
+      "name": "项目名称位置 B",
+      "status": "waiting",
+      "owner": "角色占位",
+      "phase": "阶段位置",
+      "nextStep": "下一节点位置",
+      "summary": "项目摘要位置"
+    },
+    {
+      "id": "project-fixture-03",
+      "code": "P-0003",
+      "name": "项目名称位置 C",
+      "status": "active",
+      "owner": "角色占位",
+      "phase": "阶段位置",
+      "nextStep": "下一节点位置",
+      "summary": "项目摘要位置"
+    },
+    {
+      "id": "project-fixture-04",
+      "code": "P-0004",
+      "name": "项目名称位置 D",
+      "status": "paused",
+      "owner": "角色占位",
+      "phase": "阶段位置",
+      "nextStep": "下一节点位置",
+      "summary": "项目摘要位置"
+    }
+  ],
+  "review": {
+    "items": [
+      {
+        "id": "review-fixture-01",
+        "code": "R-0001",
+        "title": "审阅条目位置 A",
+        "projectId": "project-fixture-01",
+        "kind": "内容变更",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "pending"
+      },
+      {
+        "id": "review-fixture-02",
+        "code": "R-0002",
+        "title": "审阅条目位置 B",
+        "projectId": "project-fixture-02",
+        "kind": "结构变更",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "pending"
+      },
+      {
+        "id": "review-fixture-03",
+        "code": "R-0003",
+        "title": "审阅条目位置 C",
+        "projectId": "project-fixture-03",
+        "kind": "发布",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "pending"
+      },
+      {
+        "id": "review-fixture-04",
+        "code": "R-0004",
+        "title": "审阅条目位置 D",
+        "projectId": "project-fixture-04",
+        "kind": "回滚",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "approved"
+      },
+      {
+        "id": "review-fixture-05",
+        "code": "R-0005",
+        "title": "审阅条目位置 E",
+        "projectId": "project-fixture-01",
+        "kind": "内容变更",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "returned"
+      }
+    ]
+  }
+}

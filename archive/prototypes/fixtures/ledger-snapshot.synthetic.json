@@ -1,0 +1,15 @@
+{
+  "schema": "ledger-snapshot/v1",
+  "snapshotId": "fixture-ledger-2026-10",
+  "asOf": "2026-10-26",
+  "locale": "zh-CN",
+  "visibilityPolicy": "field-explicit",
+  "synthetic": true,
+  "fields": {
+    "monthlyIncome": { "value": null, "unit": "CNY", "visibility": "private" },
+    "savingsRate": { "value": "sample-percent", "unit": "percent", "visibility": "public" },
+    "emergencyFund": { "value": "sample-milestone", "unit": "milestone", "visibility": "public" },
+    "netWorth": { "value": null, "unit": "CNY", "visibility": "private" },
+    "fiveYearTarget": { "value": "sample-target", "unit": "milestone", "visibility": "public" }
+  }
+}

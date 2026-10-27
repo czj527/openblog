@@ -1,0 +1,1325 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="Openblog composition prototype / Window, Desk and private Workbench">
+  <link rel="icon" href="data:,">
+  <title>Openblog / Window</title>
+  <style>
+    :root {
+      --scene-fg: #f7faf7;
+      --scene-muted: rgba(247, 250, 247, .74);
+      --scene-faint: rgba(247, 250, 247, .56);
+      --scene-glass: rgba(18, 31, 34, .28);
+      --scene-glass-solid: rgba(18, 31, 34, .91);
+      --scene-line: rgba(247, 250, 247, .36);
+      --window-light: #e9c888;
+      --scene-scrim-top: rgba(10, 25, 29, .40);
+      --scene-scrim-bottom: rgba(7, 19, 23, .68);
+      --desk-ink: #17272d;
+      --desk-muted: #68777c;
+      --desk-paper: #edf1ef;
+      --desk-surface: #fbfcfa;
+      --desk-surface-deep: #e1e9e6;
+      --desk-line: rgba(23, 39, 45, .15);
+      --desk-line-strong: rgba(23, 39, 45, .30);
+      --desk-accent: #1d716a;
+      --desk-accent-soft: #d7ece7;
+      --desk-warning: #996719;
+      --desk-warning-soft: #f4e8c9;
+      --desk-danger: #963f3a;
+      --desk-danger-soft: #f1dbd8;
+      --desk-night: #20343b;
+      --font-sans: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+      --ease-out: cubic-bezier(.22, .72, .24, 1);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-width: 320px; min-height: 100%; margin: 0; }
+    html { background: var(--desk-paper); }
+    body { overflow: hidden; color: var(--scene-fg); background: #152a31; font-family: var(--font-sans); line-height: 1.6; }
+    button, a, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid #cf6d2e;
+      outline-offset: 3px;
+    }
+    [hidden] { display: none !important; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+    .skip-link {
+      position: fixed; left: 14px; top: -120px; z-index: 60;
+      display: inline-flex; align-items: center; min-height: 44px; padding: 9px 13px;
+      border: 1px solid var(--desk-line-strong); background: var(--desk-surface); color: var(--desk-ink);
+      text-decoration: none;
+    }
+    .skip-link:focus { top: 14px; }
+
+    /* Window scene */
+    .scene-layer {
+      position: fixed; inset: 0; z-index: 1; isolation: isolate; overflow: hidden;
+      background: #152a31; transition: opacity 260ms ease;
+    }
+    .scene-layer.is-muted { opacity: .62; }
+    .poster, .fx-canvas, .scene-scrim, .scene-vignette {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+    }
+    .poster {
+      z-index: -5; object-fit: cover; object-position: 16% 69%;
+      background: linear-gradient(150deg, #c9d8d8 0%, #759296 45%, #1d343b 100%);
+    }
+    .fx-canvas { z-index: -4; pointer-events: none; opacity: .80; transition: opacity 480ms ease; }
+    .fx-canvas.is-paused, .fx-canvas.is-static { opacity: 0; }
+    .scene-scrim {
+      z-index: -2; pointer-events: none;
+      background: linear-gradient(180deg, var(--scene-scrim-top) 0%, rgba(7, 19, 23, .03) 25%, rgba(7, 19, 23, .03) 57%, var(--scene-scrim-bottom) 100%);
+    }
+    .scene-vignette {
+      z-index: -1; pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 34%, rgba(4, 12, 15, .24) 100%);
+    }
+    .scene-topbar, .desk-topbar, .workbench-topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 22px;
+    }
+    .scene-topbar {
+      position: absolute; z-index: 4; top: 0; left: 0; right: 0;
+      padding: max(18px, env(safe-area-inset-top)) clamp(18px, 4vw, 58px) 18px;
+    }
+    .brand {
+      display: inline-flex; align-items: center; gap: 10px; min-height: 44px; border: 0; padding: 0;
+      background: transparent; cursor: pointer; font: 600 13px var(--font-mono); letter-spacing: .04em;
+    }
+    .scene-topbar .brand { color: var(--scene-fg); text-shadow: 0 1px 12px rgba(0,0,0,.42); }
+    .brand-mark {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 21px; height: 21px; flex: none;
+    }
+    .brand-mark i { display: block; border: 1px solid currentColor; background: rgba(255,255,255,.08); }
+    .scene-nav, .desk-nav { display: flex; align-items: center; gap: 3px; }
+    .scene-nav button, .scene-tool, .desk-nav button, .desk-tool {
+      min-height: 44px; border: 1px solid transparent; border-radius: 999px; padding: 8px 13px;
+      background: transparent; cursor: pointer; font-size: 13px;
+    }
+    .scene-nav button, .scene-tool { color: var(--scene-fg); text-shadow: 0 1px 12px rgba(0,0,0,.42); }
+    .scene-nav button:hover, .scene-nav button[aria-current="page"], .scene-tool:hover {
+      border-color: var(--scene-line); background: rgba(14, 28, 32, .30);
+    }
+    .scene-tools { display: flex; align-items: center; gap: 2px; }
+    .scene-tool { color: var(--scene-muted); font: 11px var(--font-mono); }
+    .scene-center {
+      position: absolute; z-index: 3; top: 45%; left: 50%; width: min(540px, calc(100% - 40px));
+      transform: translate(-50%, -50%); text-align: center;
+    }
+    .scene-center .eyebrow {
+      color: var(--scene-muted); font: 10px var(--font-mono); letter-spacing: .13em;
+      text-transform: uppercase; text-shadow: 0 1px 14px rgba(0,0,0,.55);
+    }
+    .scene-center h1 {
+      margin: 13px 0 0; color: var(--scene-fg); font-size: clamp(27px, 4vw, 52px);
+      line-height: 1.10; letter-spacing: 0; font-weight: 520; text-shadow: 0 2px 24px rgba(0,0,0,.35);
+    }
+    .scene-center p {
+      max-width: 450px; margin: 16px auto 0; color: var(--scene-muted); font-size: 13px;
+      line-height: 1.7; text-shadow: 0 1px 14px rgba(0,0,0,.55);
+    }
+    .entry {
+      min-height: 48px; margin-top: 25px; border: 1px solid rgba(255,255,255,.64); border-radius: 999px;
+      padding: 10px 19px; background: rgba(15, 33, 37, .28); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 10px 30px rgba(2,12,15,.18);
+      color: var(--scene-fg); cursor: pointer; backdrop-filter: blur(14px) saturate(125%);
+      transition: background 180ms ease, transform 180ms ease;
+    }
+    .entry:hover { background: rgba(15, 33, 37, .45); transform: translateY(-1px); }
+    .scene-hud {
+      position: absolute; z-index: 3; left: clamp(18px, 4vw, 58px); bottom: max(18px, env(safe-area-inset-bottom));
+      display: grid; gap: 6px; color: var(--scene-muted); font: 11px/1.45 var(--font-mono); text-shadow: 0 1px 12px rgba(0,0,0,.55);
+    }
+    .scene-hud button {
+      width: fit-content; min-height: 44px; border: 0; border-bottom: 1px solid rgba(255,255,255,.42);
+      padding: 10px 0 8px; background: transparent; color: var(--scene-muted); cursor: pointer; font: inherit;
+    }
+    .scene-hud button:hover { color: var(--scene-fg); border-color: var(--scene-fg); }
+    .scene-hud strong { color: var(--scene-fg); font-weight: 600; }
+    .scene-note {
+      position: absolute; z-index: 3; right: clamp(18px, 4vw, 58px); bottom: max(18px, env(safe-area-inset-bottom));
+      color: var(--scene-faint); font: 10px var(--font-mono); text-align: right; text-shadow: 0 1px 12px rgba(0,0,0,.5);
+    }
+    .scene-note span { display: block; }
+    .fallback {
+      position: absolute; z-index: 2; inset: 0; display: none; place-items: start center;
+      padding: max(118px, calc(env(safe-area-inset-top) + 98px)) 16px 0; pointer-events: none;
+    }
+    .fallback.is-visible { display: grid; }
+    .fallback span {
+      max-width: min(100%, 520px); border: 1px solid rgba(255,255,255,.32); border-radius: 5px; padding: 8px 10px;
+      background: rgba(12,25,29,.52); color: var(--scene-muted); font: 10px var(--font-mono); text-align: center; overflow-wrap: anywhere;
+    }
+
+    /* Desk and Workbench surface */
+    .desk-layer {
+      position: fixed; inset: 0; z-index: 20; overflow: auto; opacity: 0; pointer-events: none;
+      transform: translateY(100%); background: var(--desk-paper); color: var(--desk-ink);
+      transition: opacity 240ms ease, transform 360ms var(--ease-out);
+    }
+    .desk-layer.is-open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .desk-layer.is-workbench { transform: translateY(0); transition: none; }
+    .desk-surface { min-height: 100%; background: var(--desk-paper); }
+    .scene-sill {
+      position: relative; height: 118px; overflow: hidden; background-color: var(--desk-night);
+      background-image: linear-gradient(180deg, rgba(8, 23, 27, .05) 0%, rgba(237, 241, 239, .04) 50%, var(--desk-paper) 100%), url('../../../_assets/raw/a/a-winter-v1.jpg');
+      background-position: center bottom, 16% 69%; background-size: cover, cover; filter: saturate(.80);
+    }
+    .scene-sill::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at 16% 70%, rgba(233,200,136,.42) 0%, rgba(233,200,136,.12) 8%, transparent 21%);
+      mix-blend-mode: screen;
+    }
+    .scene-sill::after {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(180deg, rgba(15, 36, 42, .12) 0%, rgba(237,241,239,.04) 47%, var(--desk-paper) 100%);
+    }
+    .sill-label {
+      position: absolute; z-index: 1; left: clamp(16px, 4vw, 58px); bottom: 15px; color: rgba(247,250,247,.78);
+      font: 10px var(--font-mono); letter-spacing: .04em; text-shadow: 0 1px 10px rgba(0,0,0,.55);
+    }
+    .desk-shell { width: min(1480px, calc(100% - 48px)); margin: 0 auto; }
+    .desk-topbar {
+      position: relative; z-index: 2; min-height: 118px; margin-top: -118px; padding: max(18px, env(safe-area-inset-top)) 0 18px;
+      border-bottom: 1px solid var(--desk-line-strong); background: rgba(237,241,239,.34); color: var(--desk-ink);
+      backdrop-filter: blur(8px) saturate(105%);
+    }
+    .desk-topbar .brand { color: var(--desk-ink); }
+    .desk-nav button, .desk-tool { color: var(--desk-muted); }
+    .desk-nav button:hover, .desk-nav button[aria-current="page"], .desk-tool:hover {
+      border-color: var(--desk-line); background: rgba(251,252,250,.76); color: var(--desk-ink);
+    }
+    .desk-tools { display: flex; align-items: center; gap: 7px; }
+    .desk-tool { border-color: var(--desk-line); font: 11px var(--font-mono); }
+    .env-chip, .role-chip {
+      display: inline-flex; align-items: center; min-height: 28px; border: 1px solid rgba(251,252,250,.52); border-radius: 999px;
+      padding: 5px 8px; color: var(--desk-ink); background: rgba(251,252,250,.62); font: 10px var(--font-mono); white-space: nowrap;
+    }
+    .role-chip { border-color: var(--desk-line); background: var(--desk-surface); }
+    .workbench-topbar {
+      min-height: 78px; padding: 17px 0; border-bottom: 1px solid var(--desk-line-strong); color: var(--desk-ink);
+    }
+    .workbench-topbar .brand { color: var(--desk-ink); }
+    .workbench-label { color: var(--desk-muted); font-size: 11px; font-weight: 400; letter-spacing: .07em; }
+    .workbench-tools { display: flex; align-items: center; gap: 8px; }
+    .private-badge, .fixture-badge {
+      display: inline-flex; align-items: center; min-height: 30px; border: 1px dashed var(--desk-warning); padding: 6px 9px;
+      color: var(--desk-warning); background: var(--desk-warning-soft); font: 600 10px var(--font-mono); letter-spacing: .03em;
+    }
+    .workbench-content { padding: 36px 0 70px; }
+    .public-content { padding: 42px 0 70px; }
+    .content-grid {
+      display: grid; grid-template-columns: 200px minmax(0, 680px) 240px; gap: 48px; align-items: start;
+    }
+    .content-grid.is-index { grid-template-columns: 200px minmax(0, 1fr); }
+    .content-grid.is-index .context { display: none; }
+    .rail, .context { position: sticky; top: 18px; align-self: start; }
+    .kicker { color: var(--desk-accent); font: 600 10px/1.2 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; }
+    .rail h1 { margin: 10px 0 0; color: var(--desk-ink); font-size: 19px; line-height: 1.25; font-weight: 650; }
+    .rail-sub { margin: 6px 0 0; color: var(--desk-muted); font-size: 12px; }
+    .toc-list, .workbench-nav { display: grid; gap: 4px; margin: 22px 0 0; padding: 0; list-style: none; }
+    .toc-link, .workbench-tab {
+      display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 9px; align-items: center;
+      min-height: 44px; border: 1px solid transparent; border-radius: 4px; padding: 8px 9px;
+      background: transparent; color: var(--desk-muted); cursor: pointer; text-align: left; font-size: 12px;
+    }
+    .toc-link:hover, .toc-link.is-active, .workbench-tab:hover, .workbench-tab[aria-current="true"] {
+      border-color: var(--desk-line); background: var(--desk-surface); color: var(--desk-ink);
+    }
+    .tab-number, .tab-meta { color: var(--desk-muted); font: 10px var(--font-mono); }
+    .rail-note { margin-top: 24px; padding-top: 14px; border-top: 1px dashed var(--desk-line-strong); color: var(--desk-muted); font-size: 11px; }
+    .rail-note b { display: block; margin-bottom: 4px; color: var(--desk-ink); font-weight: 650; }
+    .content { min-width: 0; }
+    .content-header { padding-bottom: 27px; border-bottom: 1px solid var(--desk-line); }
+    .breadcrumb { color: var(--desk-muted); font: 11px var(--font-mono); }
+    .question { margin-top: 18px; color: var(--desk-accent); font-size: 14px; }
+    .content-header h2 { margin: 8px 0 0; color: var(--desk-ink); font-size: clamp(31px, 4.5vw, 48px); line-height: 1.16; letter-spacing: 0; font-weight: 650; }
+    .lede, .thesis { max-width: 620px; margin: 14px 0 0; color: var(--desk-muted); font-size: 15px; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 20px; color: var(--desk-muted); font: 10px var(--font-mono); overflow-wrap: anywhere; }
+    .meta-row span + span::before { content: "·"; margin-right: 14px; color: var(--desk-line-strong); }
+    .fixture-strip {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 22px;
+      border: 1px dashed var(--desk-warning); background: var(--desk-warning-soft); color: var(--desk-warning); padding: 9px 11px; font: 600 10px/1.5 var(--font-mono);
+    }
+    .fixture-strip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+    .fixture-strip span:last-child { color: #6f5520; font: 11px/1.55 var(--font-sans); font-weight: 400; }
+    .article-body { padding-top: 30px; color: var(--desk-ink); font-size: 17px; line-height: 1.82; }
+    .article-body h3 { margin: 30px 0 10px; color: var(--desk-ink); font-size: 23px; line-height: 1.35; font-weight: 650; }
+    .article-body h3:first-child { margin-top: 0; }
+    .article-body p { margin: 0 0 17px; color: #526268; }
+    .article-body p:last-child { margin-bottom: 0; }
+    .callout { margin: 28px 0; border-left: 3px solid var(--desk-accent); padding: 13px 16px; background: var(--desk-accent-soft); color: #365b57; font-size: 14px; }
+    .context { padding-left: 18px; border-left: 1px solid var(--desk-line); }
+    .context-group { padding: 0 0 20px; margin-bottom: 19px; border-bottom: 1px solid var(--desk-line); }
+    .context-group:last-child { margin-bottom: 0; border-bottom: 0; }
+    .context-group h3 { margin: 0; color: var(--desk-ink); font: 600 10px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+    .context-group p, .context-group span { display: block; margin-top: 6px; color: var(--desk-muted); font-size: 12px; }
+    .context-note { margin-top: 22px; color: var(--desk-muted); font: 10px/1.55 var(--font-mono); }
+    .state {
+      display: inline-flex; align-items: center; width: fit-content; border: 1px solid var(--desk-line-strong); border-radius: 2px; padding: 3px 6px;
+      color: var(--desk-muted); background: var(--desk-surface); font: 10px var(--font-mono); white-space: nowrap;
+    }
+    .state-doing, .state-active, .state-approved, .state-public { border-color: var(--desk-accent); color: var(--desk-accent); background: var(--desk-accent-soft); }
+    .state-waiting, .state-pending, .state-draft, .state-stale { border-color: var(--desk-warning); color: var(--desk-warning); background: var(--desk-warning-soft); }
+    .state-blocked, .state-returned, .state-denied, .state-withdrawn { border-color: var(--desk-danger); color: var(--desk-danger); background: var(--desk-danger-soft); }
+    .state-done, .state-paused, .state-private, .state-none { border-color: var(--desk-line-strong); color: var(--desk-muted); background: var(--desk-surface-deep); }
+    .index-header { display: flex; align-items: end; justify-content: space-between; gap: 25px; padding-bottom: 24px; border-bottom: 1px solid var(--desk-line); }
+    .index-header h2 { margin-top: 10px; }
+    .index-header p { max-width: 330px; color: var(--desk-muted); font-size: 13px; text-align: right; }
+    .writing-list { margin-top: 22px; border-top: 1px solid var(--desk-line-strong); }
+    .writing-row {
+      display: grid; grid-template-columns: 95px minmax(0,1fr) auto; gap: 20px; align-items: start; width: 100%;
+      border: 0; border-bottom: 1px solid var(--desk-line); padding: 18px 0; background: transparent; color: var(--desk-ink); cursor: pointer; text-align: left;
+    }
+    .writing-row:hover { background: rgba(251,252,250,.62); }
+    .writing-row time, .writing-row small { color: var(--desk-muted); font: 10px var(--font-mono); }
+    .writing-row h3 { margin: 0; color: var(--desk-ink); font-size: 16px; font-weight: 650; }
+    .writing-row p { margin: 4px 0 0; color: var(--desk-muted); font-size: 12px; }
+    .index-empty { display: grid; place-items: center; min-height: 350px; border-top: 1px solid var(--desk-line-strong); border-bottom: 1px solid var(--desk-line); text-align: center; }
+    .empty-inner { max-width: 390px; padding: 26px; }
+    .empty-mark { display: grid; place-items: center; width: 42px; height: 42px; margin: 0 auto 17px; border: 1px solid var(--desk-line-strong); border-radius: 50%; color: var(--desk-muted); font: 21px var(--font-mono); }
+    .empty-inner h3 { margin: 0; color: var(--desk-ink); font-size: 22px; font-weight: 650; }
+    .empty-inner p { margin-top: 8px; color: var(--desk-muted); font-size: 13px; }
+    .empty-inner a { display: inline-flex; align-items: center; min-height: 44px; }
+    .projection-note { margin-top: 20px; border-left: 3px solid var(--desk-accent); padding: 10px 12px; background: var(--desk-accent-soft); color: #365b57; font: 11px/1.6 var(--font-mono); }
+    .plan-list { margin-top: 22px; border-top: 1px solid var(--desk-line-strong); }
+    .plan-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 18px; padding: 17px 0; border-bottom: 1px solid var(--desk-line); }
+    .plan-row strong { display: block; color: var(--desk-ink); font-size: 15px; font-weight: 650; }
+    .plan-row small { display: block; margin-top: 4px; color: var(--desk-muted); font: 10px var(--font-mono); }
+    .plan-value { color: var(--desk-accent); font: 11px var(--font-mono); text-align: right; }
+
+    /* Workbench */
+    .workbench-layout { display: grid; grid-template-columns: 200px minmax(0, 760px) 240px; gap: clamp(28px, 4vw, 48px); align-items: start; }
+    .workbench-content .content-header { padding-top: 0; }
+    .metrics, .review-summary { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border-bottom: 1px solid var(--desk-line-strong); }
+    .review-summary { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .metric, .review-summary > div { padding: 12px 12px 14px 0; border-right: 1px solid var(--desk-line); }
+    .metric + .metric, .review-summary > div + div { padding-left: 12px; }
+    .metric:last-child, .review-summary > div:last-child { border-right: 0; }
+    .metric b, .review-summary b { display: block; color: var(--desk-ink); font: 600 22px/1.2 var(--font-mono); }
+    .metric span, .review-summary span { display: block; margin-top: 4px; color: var(--desk-muted); font-size: 11px; }
+    .block { padding-top: 26px; }
+    .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--desk-line-strong); }
+    .block-head h3 { margin: 0; color: var(--desk-ink); font-size: 15px; font-weight: 650; }
+    .block-head span { color: var(--desk-muted); font: 10px var(--font-mono); }
+    .block-note, .review-help { margin: 10px 0 0; color: var(--desk-muted); font-size: 11px; }
+    .focus-list, .task-list, .project-list, .review-list { border-bottom: 1px solid var(--desk-line-strong); }
+    .focus-row { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; gap: 14px; align-items: start; padding: 15px 0; border-bottom: 1px solid var(--desk-line); }
+    .focus-row:last-child, .task-row:last-child, .project-row:last-child, .review-row:last-child { border-bottom: 0; }
+    .focus-index, .task-id, .project-id, .review-id { padding-top: 4px; color: var(--desk-muted); font: 10px var(--font-mono); }
+    .focus-row h3, .task-row h3, .project-row h3, .review-head h3 { margin: 0; color: var(--desk-ink); font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
+    .focus-row p, .task-row p, .project-row p, .review-row p { margin: 4px 0 0; color: var(--desk-muted); font-size: 12px; overflow-wrap: anywhere; }
+    .week-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); border-bottom: 1px solid var(--desk-line-strong); }
+    .week-day { min-height: 132px; padding: 10px 9px 12px; border-right: 1px solid var(--desk-line); }
+    .week-day:last-child { border-right: 0; }
+    .week-day b { display: block; color: var(--desk-muted); font: 10px var(--font-mono); letter-spacing: .05em; }
+    .week-slot { display: block; margin-top: 12px; border-top: 1px dashed var(--desk-line); padding-top: 7px; color: var(--desk-muted); font-size: 11px; }
+    .filter-bar, .workbench-subnav { display: flex; flex-wrap: wrap; gap: 6px; padding: 16px 0; border-bottom: 1px solid var(--desk-line); }
+    .filter, .subnav-button, .action-button, .decision, .drawer-button {
+      min-height: 44px; border: 1px solid var(--desk-line); border-radius: 3px; padding: 8px 11px;
+      background: transparent; color: var(--desk-muted); cursor: pointer; font-size: 12px;
+      transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .filter:hover, .filter[aria-pressed="true"], .subnav-button:hover, .subnav-button[aria-pressed="true"], .action-button:hover, .decision:hover, .drawer-button:hover { border-color: var(--desk-ink); background: var(--desk-surface); color: var(--desk-ink); }
+    .filter-count { margin-left: 6px; color: var(--desk-muted); font: 10px var(--font-mono); }
+    .filter-summary { margin: 0; padding: 10px 0; border-bottom: 1px solid var(--desk-line); color: var(--desk-muted); font: 10px/1.6 var(--font-mono); }
+    .task-row { display: grid; grid-template-columns: 64px minmax(0,1fr) 170px 88px; gap: 16px; align-items: start; padding: 15px 0; border-bottom: 1px solid var(--desk-line); }
+    .task-meta, .project-meta { margin: 0; color: var(--desk-muted); font: 10px/1.75 var(--font-mono); }
+    .task-meta div, .project-meta div { display: flex; gap: 8px; }
+    .task-meta dt, .project-meta dt { flex: none; color: var(--desk-muted); }
+    .task-meta dd, .project-meta dd { margin: 0; color: var(--desk-ink); overflow-wrap: anywhere; }
+    .task-state-cell, .project-state-cell { text-align: right; }
+    .empty-state { padding: 38px 16px; border-bottom: 1px solid var(--desk-line); color: var(--desk-muted); font-size: 13px; text-align: center; }
+    .project-row { display: grid; grid-template-columns: 64px minmax(0,1fr) 190px 84px; gap: 16px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--desk-line); }
+    .project-scale { display: flex; gap: 4px; margin-top: 12px; }
+    .project-scale i { display: block; width: 26px; height: 4px; border: 1px solid var(--desk-line-strong); background: var(--desk-surface); }
+    .project-scale-note { display: block; margin-top: 5px; color: var(--desk-muted); font: 9px var(--font-mono); }
+    .project-meta div { justify-content: space-between; border-bottom: 1px dotted var(--desk-line); padding: 2px 0; }
+    .project-meta div:last-child { border-bottom: 0; }
+    .review-row { display: grid; grid-template-columns: 64px minmax(0,1fr) auto; gap: 16px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--desk-line); }
+    .review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .review-kind { color: var(--desk-muted) !important; font: 10px/1.6 var(--font-mono) !important; }
+    .return-note { border-left: 2px solid var(--desk-danger); padding: 3px 0 3px 8px; color: var(--desk-danger) !important; }
+    .review-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .decision[aria-pressed="true"] { border-color: var(--desk-ink); background: var(--desk-ink); color: var(--desk-surface); }
+    .decision[data-review-decision="returned"][aria-pressed="true"] { border-color: var(--desk-danger); background: var(--desk-danger); color: var(--desk-surface); }
+    .review-detail, .projection-panel, .ledger-panel {
+      margin: 18px 0 0; border: 1px solid var(--desk-line-strong); background: var(--desk-surface);
+    }
+    .review-detail-header, .projection-header, .ledger-header { display: flex; align-items: start; justify-content: space-between; gap: 18px; padding: 16px 18px; border-bottom: 1px solid var(--desk-line); }
+    .review-detail-header h3, .projection-header h3, .ledger-header h3 { margin: 0; color: var(--desk-ink); font-size: 16px; font-weight: 650; }
+    .review-detail-header p, .projection-header p, .ledger-header p { margin: 5px 0 0; color: var(--desk-muted); font-size: 11px; }
+    .review-detail-body, .projection-body, .ledger-body { padding: 17px 18px; }
+    .revision-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+    .revision-card { border: 1px solid var(--desk-line); padding: 12px; }
+    .revision-card h4 { margin: 0; color: var(--desk-ink); font: 600 10px var(--font-mono); letter-spacing: .04em; }
+    .revision-card p { margin: 8px 0 0; color: var(--desk-muted); font: 11px/1.6 var(--font-mono); overflow-wrap: anywhere; }
+    .diff-box { margin-top: 14px; border: 1px solid var(--desk-line); background: #f5f8f6; }
+    .diff-box header { display: flex; justify-content: space-between; gap: 10px; padding: 9px 11px; border-bottom: 1px solid var(--desk-line); color: var(--desk-muted); font: 10px var(--font-mono); }
+    .diff-box pre { overflow: auto; margin: 0; padding: 12px 11px; color: #42575e; font: 11px/1.65 var(--font-mono); white-space: pre-wrap; }
+    .minus { color: var(--desk-danger); }
+    .plus { color: var(--desk-accent); }
+    .detail-actions, .projection-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+    .action-button.primary { border-color: var(--desk-accent); color: var(--desk-accent); background: var(--desk-accent-soft); }
+    .action-button.danger { border-color: var(--desk-danger); color: var(--desk-danger); background: var(--desk-danger-soft); }
+    .action-button[disabled], .decision[disabled], .drawer-button[disabled] { cursor: not-allowed; opacity: .52; }
+    .gate-note { margin-top: 14px; border-left: 3px solid var(--desk-warning); padding: 10px 12px; background: var(--desk-warning-soft); color: #6e4d13; font-size: 11px; }
+    .gate-note.approved, .gate-note.published { border-left-color: var(--desk-accent); background: var(--desk-accent-soft); color: #365b57; }
+    .gate-note.blocked { border-left-color: var(--desk-danger); background: var(--desk-danger-soft); color: #73322e; }
+    .gate-note.denied { border-left-color: var(--desk-danger); background: var(--desk-danger-soft); color: #73322e; }
+    .ledger-field { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--desk-line); }
+    .ledger-field:last-child { border-bottom: 0; }
+    .ledger-field strong { display: block; color: var(--desk-ink); font-size: 13px; font-weight: 650; }
+    .ledger-field small { display: block; margin-top: 3px; color: var(--desk-muted); font: 10px var(--font-mono); }
+    .ledger-value { color: var(--desk-muted); font: 11px var(--font-mono); }
+    .visibility-button { min-width: 68px; min-height: 44px; border: 1px solid var(--desk-line); border-radius: 3px; padding: 6px 8px; background: transparent; color: var(--desk-muted); cursor: pointer; font: 10px var(--font-mono); }
+    .visibility-button.public { border-color: var(--desk-accent); color: var(--desk-accent); background: var(--desk-accent-soft); }
+    .ledger-note { margin-top: 16px; border-left: 3px solid var(--desk-accent); padding: 10px 12px; background: var(--desk-accent-soft); color: #365b57; font-size: 11px; }
+    .context-group .live-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--desk-line); font-size: 11px; }
+    .live-row:last-child { border-bottom: 0; }
+    .live-row span { color: var(--desk-muted); }
+    .live-row b { color: var(--desk-ink); font: 600 10px var(--font-mono); text-align: right; overflow-wrap: anywhere; }
+    .audit { margin: 8px 0 0; padding: 0; list-style: none; }
+    .audit li { padding: 5px 0; border-bottom: 1px dotted var(--desk-line); color: var(--desk-muted); font: 10px/1.5 var(--font-mono); overflow-wrap: anywhere; }
+    .audit li:last-child { border-bottom: 0; }
+    .audit li b { color: var(--desk-ink); font-weight: 600; }
+    .denied-panel { max-width: 680px; padding: 50px 0 80px; }
+    .denied-panel h1 { margin: 12px 0 0; color: var(--desk-ink); font-size: clamp(30px, 4vw, 48px); line-height: 1.16; }
+    .denied-panel p { max-width: 570px; color: var(--desk-muted); font-size: 15px; }
+    .denied-rule { margin: 26px 0; border-top: 1px solid var(--desk-line-strong); }
+    .footer { display: flex; justify-content: space-between; gap: 20px; padding: 20px 0 32px; border-top: 1px solid var(--desk-line-strong); color: var(--desk-muted); font: 10px var(--font-mono); }
+    .footer a { color: inherit; text-underline-offset: 3px; }
+
+    /* Demo drawer */
+    .drawer-backdrop { position: fixed; z-index: 45; inset: 0; display: none; background: rgba(2,10,13,.36); }
+    .drawer-backdrop.is-open { display: block; }
+    .demo-drawer {
+      position: fixed; z-index: 46; top: 16px; right: 16px; width: min(390px, calc(100% - 32px));
+      transform: translateX(calc(100% + 26px)); border: 1px solid var(--scene-line); border-radius: 10px; padding: 18px;
+      background: var(--scene-glass-solid); color: var(--scene-fg); box-shadow: 0 18px 60px rgba(0,0,0,.34); backdrop-filter: blur(18px);
+      transition: transform 220ms var(--ease-out);
+    }
+    .demo-drawer.is-open { transform: translateX(0); }
+    .drawer-header { display: flex; align-items: start; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.17); }
+    .drawer-header h2 { margin: 0; font-size: 16px; font-weight: 600; }
+    .drawer-header p { margin: 4px 0 0; color: var(--scene-muted); font-size: 11px; }
+    .drawer-close { width: 44px; height: 44px; flex: none; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; background: transparent; cursor: pointer; font-size: 18px; line-height: 1; }
+    .drawer-section { padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .drawer-section:last-of-type { border-bottom: 0; }
+    .drawer-label { display: block; margin-bottom: 8px; color: var(--scene-muted); font: 10px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+    .role-options { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; }
+    .role-option { min-height: 48px; border: 1px solid rgba(255,255,255,.18); border-radius: 5px; background: rgba(255,255,255,.06); color: var(--scene-muted); cursor: pointer; font-size: 12px; }
+    .role-option:hover, .role-option[aria-pressed="true"] { border-color: rgba(255,255,255,.62); background: rgba(255,255,255,.14); color: var(--scene-fg); }
+    .drawer-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .drawer-button { border-color: rgba(255,255,255,.2); color: var(--scene-muted); background: rgba(255,255,255,.05); }
+    .drawer-button.primary { border-color: var(--window-light); color: var(--window-light); }
+    .drawer-copy { margin: 0; color: var(--scene-muted); font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; }
+    .drawer-flow { margin-top: 10px; padding: 10px 11px; border-left: 2px solid var(--window-light); background: rgba(233,200,136,.10); color: var(--scene-muted); font: 10px/1.65 var(--font-mono); overflow-wrap: anywhere; }
+    .drawer-flow strong { color: var(--window-light); font-weight: 600; }
+    .toast { position: fixed; z-index: 70; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translate(-50%, 18px); max-width: min(620px, calc(100% - 28px)); opacity: 0; pointer-events: none; border: 1px solid var(--desk-line-strong); padding: 9px 12px; background: var(--desk-surface); color: var(--desk-ink); box-shadow: 0 12px 40px rgba(0,0,0,.15); font: 11px/1.5 var(--font-mono); transition: opacity 180ms ease, transform 180ms ease; }
+    .toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 1260px) {
+      .content-grid, .workbench-layout { grid-template-columns: 200px minmax(0,1fr); gap: 36px; }
+      .content-grid.is-index { grid-template-columns: 200px minmax(0,1fr); }
+      .context { grid-column: 2; position: static; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 22px 28px; padding: 22px 0 0; border-top: 1px solid var(--desk-line); border-left: 0; }
+      .context-group { margin: 0; }
+      .context-note { grid-column: 1 / -1; margin-top: 0; }
+    }
+    @media (max-width: 980px) {
+      .content-grid, .content-grid.is-index, .workbench-layout { grid-template-columns: 1fr; gap: 28px; }
+      .public-content, .workbench-content { padding-top: 30px; }
+      .rail, .context { position: static; }
+      .rail h1 { margin-top: 6px; }
+      .toc-list, .workbench-nav { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 4px; margin-top: 14px; padding: 2px 2px 6px; }
+      .toc-link, .workbench-tab { flex: 0 0 auto; }
+      .rail-note { display: none; }
+      .context { grid-column: auto; grid-template-columns: repeat(2, minmax(0,1fr)); padding: 20px 0 0; border-top: 1px solid var(--desk-line); }
+      .week-grid { grid-template-columns: repeat(4, minmax(0,1fr)); }
+      .week-day:nth-child(4) { border-right: 0; }
+    }
+    @media (max-width: 760px) {
+      .scene-topbar { align-items: flex-start; }
+      .scene-nav { position: absolute; top: 72px; left: 18px; }
+      .scene-center { top: 48%; }
+      .scene-center h1 { font-size: 34px; }
+      .scene-note { display: none; }
+      .scene-sill { height: 58px; background-position: center bottom, 16% 69%; }
+      .sill-label { bottom: 8px; left: 16px; font-size: 9px; }
+      .desk-topbar { min-height: 58px; margin-top: -58px; padding: max(10px, env(safe-area-inset-top)) 0 10px; background: rgba(237,241,239,.54); }
+      .desk-topbar .desk-nav { width: 100%; overflow-x: auto; order: 3; }
+      .desk-topbar { flex-wrap: wrap; }
+      .desk-topbar .brand { margin-right: auto; }
+      .desk-tools { margin-left: auto; }
+      .desk-shell { width: min(100% - 32px, 1480px); }
+      .public-content, .workbench-content { padding-top: 24px; }
+      .revision-grid { grid-template-columns: 1fr; }
+      .task-row, .project-row, .review-row { grid-template-columns: 52px minmax(0,1fr); }
+      .task-meta, .task-state-cell, .project-meta, .project-state-cell, .review-actions { grid-column: 2; }
+      .task-state-cell, .project-state-cell { text-align: left; }
+      .project-meta { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 4px 14px; }
+      .review-actions { justify-content: flex-start; }
+      .metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .metric:nth-child(2) { border-right: 0; }
+      .metric:nth-child(n+3) { border-top: 1px solid var(--desk-line); }
+      .week-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .week-day:nth-child(2n) { border-right: 0; }
+      .week-day:nth-child(n+3) { border-top: 1px solid var(--desk-line); }
+      .writing-row { grid-template-columns: 1fr; gap: 5px; }
+      .index-header { display: block; }
+      .index-header p { margin-top: 10px; text-align: left; }
+      .plan-row { grid-template-columns: 1fr; gap: 8px; }
+      .plan-value { text-align: left; }
+      .footer { display: block; }
+      .footer a { display: inline-flex; align-items: center; min-height: 44px; margin-top: 0; margin-right: 12px; }
+    }
+    @media (max-width: 620px) {
+      .scene-topbar { padding-inline: 16px; }
+      .scene-nav { top: 65px; left: 16px; }
+      .scene-nav button, .scene-tool { min-height: 44px; padding-inline: 9px; font-size: 12px; }
+      .scene-tools { margin-left: auto; }
+      .scene-center { width: calc(100% - 32px); }
+      .scene-center h1 { font-size: 31px; }
+      .scene-center p { margin-top: 12px; font-size: 12px; }
+      .entry { margin-top: 19px; }
+      .scene-hud { left: 16px; font-size: 10px; }
+      .desk-topbar { align-items: flex-start; padding-inline: 0; }
+      .workbench-topbar { row-gap: 8px; }
+      .desk-tools .env-chip { display: none; }
+      .desk-shell { width: min(100% - 28px, 1480px); }
+      .content-header h2 { font-size: 34px; }
+      .meta-row { gap: 6px 10px; margin-top: 16px; }
+      .meta-row span + span::before { content: none; }
+      .context { grid-template-columns: 1fr; }
+      .project-meta { grid-template-columns: 1fr; }
+      .project-meta div { max-width: 300px; }
+      .task-row, .project-row, .review-row { grid-template-columns: 1fr; gap: 8px; }
+      .task-id, .project-id, .review-id { padding-top: 0; }
+      .task-meta, .task-state-cell, .project-meta, .project-state-cell, .review-actions { grid-column: 1; }
+      .review-actions { justify-content: flex-start; }
+      .decision { flex: 1 1 auto; }
+      .ledger-field { grid-template-columns: minmax(0,1fr) auto; }
+      .ledger-value { grid-column: 1 / -1; }
+      .visibility-button { grid-column: 2; grid-row: 1; }
+      .drawer-backdrop.is-open { pointer-events: auto; }
+      .demo-drawer { top: 10px; right: 10px; width: calc(100% - 20px); padding: 14px; }
+      .role-options { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+      .fx-canvas { display: none; }
+    }
+    @media (prefers-reduced-transparency: reduce) {
+      .entry, .demo-drawer { background: #172d33; backdrop-filter: none; }
+    }
+    @media (forced-colors: active) {
+      *, *::before, *::after { box-shadow: none !important; }
+      .fx-canvas, .scene-scrim, .scene-vignette, .scene-sill::before, .scene-sill::after { display: none; }
+      .entry, .demo-drawer, .drawer-close, .role-option, .drawer-button { border-color: ButtonText; background: Canvas; color: CanvasText; backdrop-filter: none; }
+      .desk-layer, .desk-surface { background: Canvas; color: CanvasText; }
+      .desk-nav button, .desk-tool, .filter, .subnav-button, .action-button, .decision, .visibility-button, .workbench-tab, .toc-link { border-color: ButtonText; background: Canvas; color: CanvasText; }
+      .state, .fixture-strip, .private-badge, .fixture-badge, .callout, .gate-note, .projection-note, .ledger-note { border-color: ButtonText; background: Canvas; color: CanvasText; }
+      .scene-sill { background: ButtonText; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#primaryContent">跳到主要内容</a>
+  <div class="scene-layer" id="sceneLayer" aria-label="Window 场景">
+    <img class="poster" id="poster" src="../../../_assets/raw/a/a-winter-v1.jpg" alt="雪后的山谷、湖面与远山，一间小屋的窗户透出微弱暖光">
+    <canvas class="fx-canvas" id="fxCanvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim" aria-hidden="true"></div>
+    <div class="scene-vignette" aria-hidden="true"></div>
+
+    <header class="scene-topbar" id="sceneTopbar">
+      <button class="brand" type="button" data-route="window" aria-label="回到 Window 首页">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        OPENBLOG
+      </button>
+      <nav class="scene-nav" aria-label="首页导航">
+        <button type="button" data-route="writing" aria-current="false">写作</button>
+        <button type="button" data-route="plan" id="scenePlanNav" aria-current="false" hidden>规划</button>
+      </nav>
+      <div class="scene-tools" aria-label="首页工具">
+        <button class="scene-tool" type="button" data-action="pause" id="pauseButton">暂停动效</button>
+        <button class="scene-tool" type="button" data-action="open-drawer" aria-haspopup="dialog" aria-controls="demoDrawer" aria-expanded="false">窗外</button>
+        <button class="scene-tool" type="button" data-action="open-drawer" aria-haspopup="dialog" aria-controls="demoDrawer" aria-expanded="false">演示</button>
+      </div>
+    </header>
+
+    <section class="scene-center" aria-labelledby="heroTitle">
+      <div class="eyebrow">WINDOW / COMPOSED PROTOTYPE</div>
+      <h1 id="heroTitle">让世界先停在窗外</h1>
+      <p>场景负责让人停下，桌面负责让事情变清楚。进入写作时，窗景不会消失，它会收成桌面的窗沿。</p>
+      <button class="entry" type="button" data-route="writing">进入写作</button>
+    </section>
+
+    <div class="scene-hud" aria-label="场景状态">
+      <div><strong>作者所在城市</strong> · <span id="seasonLabel">冬</span> · <span id="weatherLabel">晴</span></div>
+      <div id="timeLabel">--:-- · 手动预览</div>
+      <button type="button" data-action="open-drawer" aria-haspopup="dialog" aria-controls="demoDrawer" aria-expanded="false">打开窗外设置</button>
+    </div>
+    <div class="scene-note" aria-hidden="true"><span>POSTER + LIGHT ENHANCEMENT</span><span id="renderLabel">poster ready · enhancement loading</span></div>
+    <div class="fallback" id="fallback" role="status" aria-live="polite"><span>已使用静态 poster · 动态增强不可用</span></div>
+  </div>
+
+  <div class="desk-layer" id="deskLayer" aria-hidden="true">
+    <div class="desk-surface" id="deskSurface">
+      <div class="scene-sill" id="sceneSill"><div class="sill-label" id="sillLabel">WINDOW / 冬 · 晴 · 手动预览</div></div>
+      <div class="desk-shell">
+        <header class="desk-topbar" id="deskTopbar">
+          <button class="brand" type="button" data-route="window" aria-label="回到 Window 首页">
+            <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            OPENBLOG
+          </button>
+          <nav class="desk-nav" aria-label="公开桌面导航">
+            <button type="button" data-route="writing" data-public-nav="writing" aria-current="false">写作</button>
+            <button type="button" data-route="plan" data-public-nav="plan" id="deskPlanNav" aria-current="false" hidden>规划</button>
+          </nav>
+          <div class="desk-tools">
+            <span class="env-chip" id="deskEnvChip">WINDOW / 冬 · 晴</span>
+            <button class="desk-tool" type="button" data-action="open-drawer" aria-haspopup="dialog" aria-controls="demoDrawer" aria-expanded="false">演示</button>
+          </div>
+        </header>
+
+        <main class="public-content" id="primaryContent" tabindex="-1"></main>
+        <main class="workbench-content" id="workbenchContent" tabindex="-1"></main>
+        <footer class="footer" id="deskFooter"><span>COMPOSED PROTOTYPE · SYNTHETIC ONLY · NO PRODUCTION ACTIONS</span><span><a href="#window" data-route="window">Window</a> · <a href="#writing" data-route="writing">Desk</a></span></footer>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" data-action="close-drawer" aria-hidden="true"></div>
+  <aside class="demo-drawer" id="demoDrawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true" inert tabindex="-1">
+    <div class="drawer-header">
+      <div><h2 id="drawerTitle">组合演示</h2><p>角色切换只模拟能力边界，不是登录或生产鉴权。</p></div>
+      <button class="drawer-close" type="button" data-action="close-drawer" aria-label="关闭组合演示">×</button>
+    </div>
+    <section class="drawer-section">
+      <span class="drawer-label">演示角色</span>
+      <div class="role-options" role="group" aria-label="演示角色">
+        <button class="role-option" type="button" data-role="visitor" aria-pressed="true">访客</button>
+        <button class="role-option" type="button" data-role="author" aria-pressed="false">作者</button>
+        <button class="role-option" type="button" data-role="agent" aria-pressed="false">Agent</button>
+      </div>
+    </section>
+    <section class="drawer-section">
+      <span class="drawer-label">当前流程</span>
+      <p class="drawer-copy" id="drawerState">Window · 访客 · 仅内存</p>
+      <div class="drawer-flow" id="drawerFlow"><strong>访客路径</strong><br>窗 → 写作 → 公开文章 / 空状态 → 规划（若已投影）</div>
+    </section>
+    <section class="drawer-section">
+      <div class="drawer-actions">
+        <button class="drawer-button primary" type="button" data-action="go-workbench" id="drawerWorkbenchButton" hidden>进入私有工作台</button>
+        <button class="drawer-button" type="button" data-action="reset">重置合成状态</button>
+      </div>
+    </section>
+    <section class="drawer-section">
+      <p class="drawer-copy">当前原型只在页面内存中运行；不连接账号、文件系统、MCP、数据库、真实天气或财务数据。公开内容必须经过批准与显式投影。</p>
+    </section>
+  </aside>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></div>
+
+  <script type="text/plain" id="legacy-composed-runtime">
+    (() => {
+      'use strict';
+
+      const ROUTES = new Set(['window', 'writing', 'article', 'plan', 'workbench']);
+      const ROLE_LABELS = { visitor: '访客', author: '作者', agent: 'Agent' };
+      const VIEW_LABELS = { week: '本周', tasks: '任务', projects: '项目', review: '审阅' };
+      const TASK_STATUS_LABELS = { all: '全部', todo: '待开始', doing: '进行中', waiting: '等待', blocked: '阻塞', done: '已完成' };
+      const PROJECT_STATUS_LABELS = { active: '进行中', waiting: '等待', paused: '暂停', done: '已结束' };
+      const REVIEW_STATUS_LABELS = { none: '未生成', pending: '待审', approved: '已批准', returned: '已退回' };
+      const LEDGER_LABELS = {
+        monthlyIncome: '月收入', savingsRate: '储蓄率', emergencyFund: '应急金里程碑', netWorth: '净资产', fiveYearTarget: '五年目标'
+      };
+      const posterSrc = '../../../_assets/raw/a/a-winter-v1.jpg';
+      const windowStateKey = 'openblog-window-preview';
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+      const reducedTransparency = matchMedia('(prefers-reduced-transparency: reduce)');
+
+      const WORKBENCH_FIXTURE = {
+        tasks: [
+          { id: 'task-fixture-01', code: 'T-0001', title: '任务标题位置 A', projectId: 'project-fixture-01', status: 'doing', owner: '角色占位', due: '日期占位', priority: '优先级位置', acceptance: '验收标准位置' },
+          { id: 'task-fixture-02', code: 'T-0002', title: '任务标题位置 B', projectId: 'project-fixture-01', status: 'todo', owner: '角色占位', due: '日期占位', priority: '优先级位置', acceptance: '验收标准位置' },
+          { id: 'task-fixture-03', code: 'T-0003', title: '任务标题位置 C', projectId: 'project-fixture-02', status: 'waiting', owner: '角色占位', due: '日期占位', priority: '优先级位置', acceptance: '验收标准位置' },
+          { id: 'task-fixture-04', code: 'T-0004', title: '任务标题位置 D', projectId: 'project-fixture-02', status: 'blocked', owner: '角色占位', due: '日期占位', priority: '优先级位置', acceptance: '验收标准位置' },
+          { id: 'task-fixture-05', code: 'T-0005', title: '任务标题位置 E', projectId: 'project-fixture-03', status: 'done', owner: '角色占位', due: '日期占位', priority: '优先级位置', acceptance: '验收标准位置' },
+          { id: 'task-fixture-06', code: 'T-0006', title: '任务标题位置 F', projectId: 'project-fixture-03', status: 'doing', owner: '角色占位', due: '日期占位', priority: '优先级位置', acceptance: '验收标准位置' },
+          { id: 'task-fixture-07', code: 'T-0007', title: '任务标题位置 G', projectId: 'project-fixture-01', status: 'todo', owner: '角色占位', due: '日期占位', priority: '优先级位置', acceptance: '验收标准位置' },
+          { id: 'task-fixture-08', code: 'T-0008', title: '任务标题位置 H', projectId: 'project-fixture-04', status: 'waiting', owner: '角色占位', due: '日期占位', priority: '优先级位置', acceptance: '验收标准位置' }
+        ],
+        projects: [
+          { id: 'project-fixture-01', code: 'P-0001', name: '项目名称位置 A', status: 'active', owner: '角色占位', phase: '阶段位置', nextStep: '下一节点位置', summary: '项目摘要位置' },
+          { id: 'project-fixture-02', code: 'P-0002', name: '项目名称位置 B', status: 'waiting', owner: '角色占位', phase: '阶段位置', nextStep: '下一节点位置', summary: '项目摘要位置' },
+          { id: 'project-fixture-03', code: 'P-0003', name: '项目名称位置 C', status: 'active', owner: '角色占位', phase: '阶段位置', nextStep: '下一节点位置', summary: '项目摘要位置' },
+          { id: 'project-fixture-04', code: 'P-0004', name: '项目名称位置 D', status: 'paused', owner: '角色占位', phase: '阶段位置', nextStep: '下一节点位置', summary: '项目摘要位置' }
+        ],
+        reviews: [
+          { id: 'review-fixture-01', code: 'R-0001', title: '审阅条目位置 A', projectId: 'project-fixture-01', kind: '内容变更', submitter: '角色占位', summary: '变更摘要位置', status: 'pending' },
+          { id: 'review-fixture-02', code: 'R-0002', title: '审阅条目位置 B', projectId: 'project-fixture-02', kind: '结构变更', submitter: '角色占位', summary: '变更摘要位置', status: 'pending' },
+          { id: 'review-fixture-03', code: 'R-0003', title: '审阅条目位置 C', projectId: 'project-fixture-03', kind: '发布', submitter: '角色占位', summary: '变更摘要位置', status: 'pending' },
+          { id: 'review-fixture-04', code: 'R-0004', title: '审阅条目位置 D', projectId: 'project-fixture-04', kind: '回滚', submitter: '角色占位', summary: '变更摘要位置', status: 'approved' },
+          { id: 'review-fixture-05', code: 'R-0005', title: '审阅条目位置 E', projectId: 'project-fixture-01', kind: '内容变更', submitter: '角色占位', summary: '变更摘要位置', status: 'returned' }
+        ],
+        days: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+      };
+      const initialReviewStates = Object.fromEntries(WORKBENCH_FIXTURE.reviews.map((item) => [item.id, item.status]));
+      const initialLedger = [
+        { id: 'monthlyIncome', unit: 'CNY', value: '结构值占位', visibility: 'private' },
+        { id: 'savingsRate', unit: 'percent', value: '结构值占位', visibility: 'public' },
+        { id: 'emergencyFund', unit: 'milestone', value: '结构值占位', visibility: 'public' },
+        { id: 'netWorth', unit: 'CNY', value: '结构值占位', visibility: 'private' },
+        { id: 'fiveYearTarget', unit: 'milestone', value: '结构值占位', visibility: 'public' }
+      ];
+
+      const makeInitialStore = () => ({
+        synthetic: true,
+        role: 'visitor',
+        route: 'window',
+        window: { season: '冬', weather: '晴', intensity: 42, paused: reducedMotion.matches, source: 'manual' },
+        article: {
+          id: 'fixture-article-001',
+          raw: { revision: 'raw-001', hash: 'raw-hash-001', immutable: true },
+          draft: null,
+          review: { status: 'none', boundDraftHash: null, actor: null },
+          release: null,
+          projection: { id: null, target: 'desk', sourceRevision: null, status: 'none' },
+          diffOpen: false
+        },
+        ledger: { snapshotId: 'fixture-ledger-2026-10', revision: 'ledger-001', fields: structuredClone(initialLedger) },
+        planProjection: { id: null, target: 'desk', sourceRevision: null, fieldAllowlist: [], status: 'none' },
+        workbench: { view: 'week', taskFilter: 'all', reviews: { ...initialReviewStates } },
+        audit: [],
+        ui: { drawerOpen: false, toast: '', focusReturn: null }
+      });
+      let store = makeInitialStore();
+
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+      const clone = (value) => JSON.parse(JSON.stringify(value));
+      const routeFromHash = () => {
+        const raw = location.hash.replace(/^#/, '').split('/')[0];
+        return ROUTES.has(raw) ? raw : 'window';
+      };
+      const routeIsDesk = (route) => ['writing', 'article', 'plan'].includes(route);
+      const routeIsSurface = (route) => routeIsDesk(route) || route === 'workbench';
+      const roleCanPrivate = () => store.role === 'author' || store.role === 'agent';
+      const articleIsPublic = () => store.article.release?.status === 'active' && store.article.projection.status === 'active' && store.article.projection.sourceRevision === store.article.release.draftHash;
+      const planIsPublic = () => store.planProjection.status === 'active' && store.planProjection.fieldAllowlist.length > 0;
+      const articleProjectionStale = () => store.article.projection.status === 'active' && store.article.draft && store.article.projection.sourceRevision !== store.article.draft.hash;
+      const reviewPendingCount = () => {
+        const base = Object.values(store.workbench.reviews).filter((status) => status === 'pending').length;
+        return base + (store.article.review.status === 'pending' ? 1 : 0);
+      };
+      const currentDraftIsApproved = () => Boolean(store.article.draft && store.article.review.status === 'approved' && store.article.review.boundDraftHash === store.article.draft.hash);
+      const actor = () => store.role;
+
+      function announce(message) {
+        const node = $('#announcer');
+        node.textContent = '';
+        window.setTimeout(() => { node.textContent = message; }, 25);
+      }
+      function toast(message) {
+        const node = $('#toast');
+        node.textContent = message;
+        node.classList.add('is-visible');
+        window.clearTimeout(toast.timer);
+        toast.timer = window.setTimeout(() => node.classList.remove('is-visible'), 2600);
+      }
+      function record(action, target, result, detail, sourceRevision = '') {
+        store.audit.unshift({ at: new Date().toISOString(), actor: actor(), action, target, result, sourceRevision, detail });
+        renderContext();
+      }
+      function statusChip(status, label = status) {
+        return `<span class="state state-${status}">${label}</span>`;
+      }
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+      }
+      function projectById(id) { return WORKBENCH_FIXTURE.projects.find((project) => project.id === id); }
+      function taskById(id) { return WORKBENCH_FIXTURE.tasks.find((task) => task.id === id); }
+
+      function loadWindowState() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(windowStateKey) || '{}');
+          if (saved.season) store.window.season = saved.season;
+          if (saved.weather) store.window.weather = saved.weather;
+          if (Number.isFinite(saved.intensity)) store.window.intensity = Math.max(0, Math.min(100, saved.intensity));
+          if (saved.paused === true) store.window.paused = true;
+          store.window.source = saved.source || 'manual';
+        } catch (_) { /* local preview state is optional */ }
+      }
+      function saveWindowState() {
+        try { localStorage.setItem(windowStateKey, JSON.stringify(store.window)); } catch (_) { /* local preview state is optional */ }
+      }
+      function windowStateLabel() {
+        return `${store.window.season} · ${store.window.weather} · ${store.window.source === 'manual' ? '手动预览' : '默认预览'}`;
+      }
+      function updateWindowLabels() {
+        $('#seasonLabel').textContent = store.window.season;
+        $('#weatherLabel').textContent = store.window.weather;
+        $('#pauseButton').textContent = store.window.paused ? '继续动效' : '暂停动效';
+        $('#sillLabel').textContent = `WINDOW / ${windowStateLabel()}`;
+        $('#deskEnvChip').textContent = `WINDOW / ${store.window.season} · ${store.window.weather}`;
+        updateSceneControls();
+      }
+      function updateSceneControls() {
+        $$('[data-season]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.season === store.window.season)));
+        $$('[data-weather]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.weather === store.window.weather)));
+        const range = $('#intensity');
+        if (range) { range.value = String(store.window.intensity); $('#intensityValue').textContent = `${store.window.intensity}%`; }
+      }
+
+      function setHash(route, replace = false) {
+        const next = `#${route}`;
+        if (location.hash === next) return;
+        if (replace) history.replaceState({ route }, '', next); else history.pushState({ route }, '', next);
+      }
+      function navigate(route, options = {}) {
+        const next = ROUTES.has(route) ? route : 'window';
+        const previous = store.route;
+        if (!options.fromHash) setHash(next, Boolean(options.replace));
+        store.route = next;
+        renderApp(previous);
+      }
+      function renderApp(previousRoute = '') {
+        const isSurface = routeIsSurface(store.route);
+        const isWorkbench = store.route === 'workbench';
+        const deskLayer = $('#deskLayer');
+        const sceneLayer = $('#sceneLayer');
+        const wasSurface = routeIsSurface(previousRoute);
+        const activeElement = document.activeElement;
+        if (isSurface && sceneLayer.contains(activeElement)) activeElement.blur();
+        if (!isSurface && deskLayer.contains(activeElement)) activeElement.blur();
+        deskLayer.classList.toggle('is-open', isSurface);
+        deskLayer.classList.toggle('is-workbench', isWorkbench);
+        deskLayer.setAttribute('aria-hidden', String(!isSurface));
+        deskLayer.inert = !isSurface;
+        sceneLayer.classList.toggle('is-muted', isSurface && !isWorkbench);
+        sceneLayer.inert = isSurface;
+        sceneLayer.setAttribute('aria-hidden', String(isSurface));
+        $('#sillLabel').hidden = isWorkbench;
+        $('#sceneSill').hidden = isWorkbench;
+        $('#deskTopbar').hidden = isWorkbench;
+        $('#deskFooter').hidden = false;
+        $('#workbenchContent').hidden = !isWorkbench;
+        $('#primaryContent').hidden = isWorkbench;
+        if (isWorkbench) renderWorkbench(); else renderPublicRoute();
+        updatePublicNav();
+        renderDrawer();
+        updateWindowLabels();
+        document.title = ({ window: 'Openblog / Window', writing: 'Openblog / Desk / Writing', article: 'Openblog / Desk / Article', plan: 'Openblog / Desk / Plan', workbench: 'Openblog / Workbench / Private demo' })[store.route];
+        if (isSurface && !isWorkbench && store.route !== previousRoute) {
+          window.setTimeout(() => focusRouteHeading(), reducedMotion.matches ? 0 : 360);
+        } else if (isWorkbench && !wasSurface) {
+          window.setTimeout(() => focusRouteHeading(), 30);
+        } else if (store.route === 'window' && previousRoute && previousRoute !== 'window') {
+          window.setTimeout(() => $('[data-route="writing"]', sceneLayer)?.focus(), reducedMotion.matches ? 0 : 270);
+        }
+      }
+      function focusRouteHeading() {
+        const heading = $('#primaryContent h1, #primaryContent h2, #workbenchContent h1, #workbenchContent h2');
+        if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
+      }
+      function updatePublicNav() {
+        const planVisible = planIsPublic();
+        $('#scenePlanNav').hidden = !planVisible;
+        $('#deskPlanNav').hidden = !planVisible;
+        $$('[data-public-nav]').forEach((button) => button.setAttribute('aria-current', String(button.dataset.route === store.route)));
+        $$('[data-route="window"]', $('#sceneTopbar')).forEach((button) => button.setAttribute('aria-current', String(store.route === 'window')));
+      }
+
+      function renderPublicRoute() {
+        const root = $('#primaryContent');
+        if (store.route === 'writing') root.innerHTML = renderWriting();
+        else if (store.route === 'article') root.innerHTML = renderArticle();
+        else if (store.route === 'plan') root.innerHTML = renderPlan();
+        else root.innerHTML = renderWriting();
+        root.className = `public-content ${store.route === 'writing' ? 'is-index' : ''}`;
+        bindPublicContent();
+        renderContext();
+      }
+      function renderWriting() {
+        const publicArticle = articleIsPublic();
+        return `<div class="content-grid is-index">
+          <aside class="rail" aria-label="写作索引说明">
+            <span class="kicker">DESK / CONTENT</span>
+            <h1>信息先于装饰</h1>
+            <p class="rail-sub">窗沿把此刻带到桌面，内容从这里开始。</p>
+            <div class="rail-note"><b>写作索引</b>只列已完成公开投影的内容。草稿、审阅和私有规划不会出现在这里。</div>
+          </aside>
+          <section class="content" aria-labelledby="writingHeading">
+            <header class="index-header"><div><div class="breadcrumb">/writing · DESK</div><h2 id="writingHeading">写作</h2></div><p>索引使用排版行，不用缩略图卡片网格。窗景已经退到窗沿，信息在桌上展开。</p></header>
+            ${publicArticle ? `<div class="writing-list"><button class="writing-row" type="button" data-route="article"><time>REVISION</time><div><h3>文章标题位置（公开投影）</h3><p>论点位置 · 结构样例 · 来源 ${escapeHtml(store.article.projection.sourceRevision)}</p></div><small>ESSAY</small></button></div><div class="projection-note">公开内容来自已批准的 ${escapeHtml(store.article.projection.sourceRevision)}；Desk 只读取投影，不回写 Workbench。</div>` : `<div class="index-empty"><div class="empty-inner"><div class="empty-mark" aria-hidden="true">∅</div><h3>暂无已发布文章</h3><p>这里没有草稿、审阅或私有任务。等一份内容通过批准并完成公开投影后，排版行会从这里开始。</p></div></div>`}
+          </section>
+        </div>`;
+      }
+      function renderArticle() {
+        if (!articleIsPublic()) {
+          return `<div class="content-grid is-index"><aside class="rail"><span class="kicker">DESK / ARTICLE</span><h1>文章尚未公开</h1><p class="rail-sub">公开页只读取已激活的投影。</p></aside><section class="content" aria-labelledby="articleEmptyHeading"><header class="index-header"><div><div class="breadcrumb">/writing/[slug] · DESK</div><h2 id="articleEmptyHeading">暂无可见文章</h2></div><p>草稿和审阅状态属于私有工作层，不会因为猜测路由而泄漏。</p></header><div class="index-empty"><div class="empty-inner"><div class="empty-mark" aria-hidden="true">∅</div><h3>公开投影尚未激活</h3><p>返回写作索引，或由作者在私有工作台完成批准与投影。</p></div></div></section></div>`;
+        }
+        return `<div class="content-grid">
+          <aside class="rail" aria-label="文章目录"><span class="kicker">DESK / ARTICLE</span><h1>文章结构</h1><ol class="toc-list"><li><button class="toc-link is-active" type="button" data-anchor="articleIntro"><span class="tab-number">01</span><span>问题与论点</span></button></li><li><button class="toc-link" type="button" data-anchor="articleBody"><span class="tab-number">02</span><span>正文排版</span></button></li><li><button class="toc-link" type="button" data-anchor="articleRevision"><span class="tab-number">03</span><span>修订与引用</span></button></li></ol><div class="rail-note"><b>版本绑定</b>公开页面读取 ${escapeHtml(store.article.projection.sourceRevision)}，不会静默跟随私有草稿变化。</div></aside>
+          <section class="content" aria-labelledby="articleHeading"><header class="content-header" id="articleIntro"><div class="breadcrumb">/writing/[slug] · DESK</div><div class="question">问题位置：一篇文章要先回答什么？</div><h2 id="articleHeading">文章标题位置（公开投影）</h2><p class="thesis">论点位置：用一句清楚的话说明这篇文章现在主张什么。</p><div class="meta-row"><span>PUBLIC PROJECTION</span><span>${escapeHtml(store.article.projection.sourceRevision)}</span><span>阅读时长占位</span><span>观点待确认</span></div><div class="fixture-strip"><i class="dot" aria-hidden="true"></i><span>SYNTHETIC PUBLIC PROJECTION</span><span>公开页面只展示已批准的结构内容；不包含 raw、agent_note 或私有备注。</span></div></header><article class="article-body" id="articleBody"><h3>正文排版区域</h3><p>这里保留真实文章进入后的空间关系：标题、论点、元信息、正文和旁注各自有明确层级。</p><p>当前正文仍是结构占位，不填入虚构论据或个人经历。内容契约确定后，文章正文、引用、图片、表格和代码块会在这个区域按同一套规则渲染。</p><div class="callout">公开边界：文章 release 与 Desk projection 分开记录；这条页面只读取已批准、已投影的版本。</div><h3 id="articleRevision">修订、引用与回看</h3><p>版本历史会在右侧形成可追溯的修订时间线；这不是装饰，而是作者如何改变想法的公开记录。</p></article></section>
+          <aside class="context" aria-label="文章语境"><div class="context-group"><h3>THESIS</h3><p>论点位置</p></div><div class="context-group"><h3>QUESTION</h3><p>问题位置</p></div><div class="context-group"><h3>MATURITY</h3><span>${statusChip('approved', '已批准版本')}</span></div><div class="context-group"><h3>REVISION</h3><p>${escapeHtml(store.article.projection.sourceRevision)} · 来源版本绑定</p></div><div class="context-group"><h3>BACKLINKS</h3><p>被引用内容位置</p></div><p class="context-note">语境栏不是装饰。没有真实语境字段时，它会退让给正文，不保留空白卡片。</p></aside>
+        </div>`;
+      }
+      function renderPlan() {
+        const fields = store.ledger.fields.filter((field) => store.planProjection.fieldAllowlist.includes(field.id));
+        if (!planIsPublic()) {
+          return `<div class="content-grid is-index"><aside class="rail"><span class="kicker">DESK / PLAN</span><h1>规划</h1><p class="rail-sub">只展示已批准快照。</p></aside><section class="content" aria-labelledby="planHeading"><header class="index-header"><div><div class="breadcrumb">/plan · DESK</div><h2 id="planHeading">规划</h2></div><p>经济与人生规划仍由独立来源域提供，公开面只读取字段级投影。</p></header><div class="index-empty"><div class="empty-inner"><div class="empty-mark" aria-hidden="true">∅</div><h3>暂无公开规划快照</h3><p>当前没有 active projection。私有字段、原始金额和审阅备注不会出现在这里。</p></div></div></section></div>`;
+        }
+        return `<div class="content-grid is-index"><aside class="rail"><span class="kicker">DESK / PLAN</span><h1>规划</h1><p class="rail-sub">字段级显式公开的只读快照。</p><div class="rail-note"><b>版本绑定</b>${escapeHtml(store.planProjection.sourceRevision)} · 只读公开投影</div></aside><section class="content" aria-labelledby="planHeading"><header class="index-header"><div><div class="breadcrumb">/plan · DESK</div><h2 id="planHeading">规划</h2></div><p>这里显示公开字段，不展示原始财务记录，也不把 Workbench 的任务和周计划混入规划。</p></header><div class="plan-list">${fields.map((field) => `<div class="plan-row"><div><strong>${LEDGER_LABELS[field.id]}</strong><small>unit: ${escapeHtml(field.unit)} · source: ${escapeHtml(store.planProjection.sourceRevision)}</small></div><div class="plan-value">${escapeHtml(field.value)}</div></div>`).join('')}</div><div class="projection-note">FIELD-EXPLICIT PROJECTION · ${fields.length} 个字段 · 来源版本 ${escapeHtml(store.planProjection.sourceRevision)}</div></section></div>`;
+      }
+      function bindPublicContent() {
+        $$('[data-route]', $('#primaryContent')).forEach((button) => button.addEventListener('click', () => navigate(button.dataset.route)));
+        $$('.toc-link', $('#primaryContent')).forEach((button) => button.addEventListener('click', () => {
+          $$('.toc-link', $('#primaryContent')).forEach((item) => item.classList.toggle('is-active', item === button));
+          const target = document.getElementById(button.dataset.anchor);
+          if (target) target.scrollIntoView({ behavior: reducedMotion.matches ? 'auto' : 'smooth', block: 'start' });
+        }));
+      }
+
+      function renderWorkbench() {
+        const root = $('#workbenchContent');
+        if (!roleCanPrivate()) {
+          root.innerHTML = `<div class="desk-shell"><div class="denied-panel" aria-labelledby="deniedHeading"><span class="kicker">WORKBENCH / PRIVATE</span><h1 id="deniedHeading">需要私有角色</h1><p>这是一个结构化的鉴权拒绝状态。访客不会收到任务、周计划、项目、草稿、审阅或审计内容。</p><div class="denied-rule"></div><p class="drawer-copy">当前为模拟角色，不是真实登录。打开“演示”切换为作者或 Agent，继续验证工作流边界。</p><button class="action-button primary" type="button" data-action="open-drawer">打开演示角色</button></div></div>`;
+          root.className = 'workbench-content';
+          root.hidden = false;
+          root.querySelector('[data-action="open-drawer"]').addEventListener('click', openDrawer);
+          return;
+        }
+        root.innerHTML = `<div class="desk-shell"><header class="workbench-topbar"><button class="brand" type="button" data-route="window" aria-label="回到 Window 首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>OPENBLOG <span class="workbench-label">/ WORKBENCH</span></button><div class="workbench-tools"><span class="private-badge">PRIVATE / SIMULATED ROLE</span><button class="desk-tool" type="button" data-action="open-drawer" aria-haspopup="dialog" aria-controls="demoDrawer" aria-expanded="false">演示</button></div></header><div class="workbench-layout">
+          <aside class="rail" aria-label="工作台导航"><span class="kicker">DESK / WORKBENCH</span><h1>工作台</h1><p class="rail-sub">${ROLE_LABELS[store.role]} · 结构 fixture · 仅内存</p><nav class="workbench-nav" aria-label="工作台视图">${[['week','01','本周'],['tasks','02','任务'],['projects','03','项目'],['review','04','审阅']].map(([id,num,label]) => `<button class="workbench-tab" type="button" data-workbench-view="${id}" aria-current="${store.workbench.view === id}"><span class="tab-number">${num}</span><span>${label}</span><span class="tab-meta">${id === 'week' ? WORKBENCH_FIXTURE.tasks.filter((task) => ['doing','blocked','waiting'].includes(task.status)).length : id === 'tasks' ? WORKBENCH_FIXTURE.tasks.length : id === 'projects' ? WORKBENCH_FIXTURE.projects.length : reviewPendingCount()}</span></button>`).join('')}</nav><div class="rail-note"><b>读法</b>左侧切换视图，主列使用发丝线排版；右侧只放边界、内存状态和操作记录。</div></aside>
+          <section class="content" aria-live="polite">${renderWorkbenchPanel()}</section>
+          <aside class="context" aria-label="私有边界与内存状态">${renderContextMarkup()}</aside>
+        </div></div>`;
+        root.querySelectorAll('[data-workbench-view]').forEach((button) => button.addEventListener('click', () => { store.workbench.view = button.dataset.workbenchView; renderWorkbench(); announce(`已切换到${VIEW_LABELS[store.workbench.view]}视图（仅内存）`); }));
+        root.querySelectorAll('[data-task-filter]').forEach((button) => button.addEventListener('click', () => { store.workbench.taskFilter = button.dataset.taskFilter; renderWorkbench(); }));
+        root.querySelectorAll('[data-review-decision]').forEach((button) => button.addEventListener('click', () => decideFixtureReview(button.dataset.reviewId, button.dataset.reviewDecision)));
+        root.querySelectorAll('[data-action]').forEach((button) => bindAction(button));
+        root.querySelectorAll('[data-ledger-toggle]').forEach((button) => button.addEventListener('click', () => toggleLedger(button.dataset.ledgerToggle)));
+      }
+      function renderWorkbenchPanel() {
+        if (store.workbench.view === 'week') return renderWeekPanel();
+        if (store.workbench.view === 'tasks') return renderTasksPanel();
+        if (store.workbench.view === 'projects') return renderProjectsPanel();
+        return renderReviewPanel();
+      }
+      function workbenchHeader(route, question, title, lede, meta) {
+        return `<header class="content-header"><div class="breadcrumb">/workbench/${route} · WORKBENCH</div><div class="question">${question}</div><h2 id="workbenchHeading">${title}</h2><p class="lede">${lede}</p><div class="meta-row">${meta.map((item) => `<span>${item}</span>`).join('')}</div></header>`;
+      }
+      function renderWeekPanel() {
+        const tasks = WORKBENCH_FIXTURE.tasks;
+        return `${workbenchHeader('week','本周需要先看什么？','本周','周区间、焦点和日程都是结构占位。这一视图只验证“先看重点，再看节奏”的读法，不制造真实安排。',['RANGE PLACEHOLDER','FOCUS SLOTS','MEMORY ONLY'])}<div class="metrics"><div class="metric"><b>${tasks.filter((task) => task.status === 'doing').length}</b><span>进行中任务</span></div><div class="metric"><b>${tasks.filter((task) => task.status === 'waiting').length}</b><span>等待任务</span></div><div class="metric"><b>${tasks.filter((task) => task.status === 'blocked').length}</b><span>阻塞任务</span></div><div class="metric"><b>${reviewPendingCount()}</b><span>待审条目</span></div></div><section class="block"><div class="block-head"><h3>本周焦点</h3><span>FOCUS / FIXTURE</span></div><div class="focus-list">${tasks.slice(0,4).map((task,index) => `<article class="focus-row"><div class="focus-index">${String(index+1).padStart(2,'0')}</div><div><h3>${task.title}</h3><p>${projectById(task.projectId).name} · ${task.acceptance}</p></div>${statusChip(task.status,TASK_STATUS_LABELS[task.status])}</article>`).join('')}</div></section><section class="block"><div class="block-head"><h3>一周结构</h3><span>RANGE / PLACEHOLDER</span></div><div class="week-grid">${WORKBENCH_FIXTURE.days.map((day) => `<div class="week-day"><b>${day}</b><span class="week-slot">安排位置</span></div>`).join('')}</div><p class="block-note">每天只保留一个“安排位置”，不填入虚构会议、截止时间或工作量。</p></section>`;
+      }
+      function renderTasksPanel() {
+        const filter = store.workbench.taskFilter;
+        const visible = filter === 'all' ? WORKBENCH_FIXTURE.tasks : WORKBENCH_FIXTURE.tasks.filter((task) => task.status === filter);
+        const counts = Object.fromEntries(Object.keys(TASK_STATUS_LABELS).map((key) => [key, key === 'all' ? WORKBENCH_FIXTURE.tasks.length : WORKBENCH_FIXTURE.tasks.filter((task) => task.status === key).length]));
+        return `${workbenchHeader('tasks','哪些任务需要先处理？','任务','同一份任务清单按状态筛选。筛选只改变本页显示，不改变 fixture，也不写文件。',['8 FIXTURE ROWS','6 FILTER STATES','MEMORY ONLY'])}<div class="filter-bar">${Object.entries(TASK_STATUS_LABELS).map(([key,label]) => `<button class="filter" type="button" data-task-filter="${key}" aria-pressed="${filter === key}">${label}<span class="filter-count">${counts[key]}</span></button>`).join('')}</div><p class="filter-summary">显示 ${visible.length} / ${WORKBENCH_FIXTURE.tasks.length} 条结构占位任务 · 筛选只改内存</p><div class="task-list">${visible.length ? visible.map((task) => `<article class="task-row"><div class="task-id">${task.code}</div><div><h3>${task.title}</h3><p>${projectById(task.projectId).name} · ${task.acceptance}</p></div><dl class="task-meta"><div><dt>负责</dt><dd>${task.owner}</dd></div><div><dt>期限</dt><dd>${task.due}</dd></div><div><dt>优先级</dt><dd>${task.priority}</dd></div></dl><div class="task-state-cell">${statusChip(task.status,TASK_STATUS_LABELS[task.status])}</div></article>`).join('') : '<div class="empty-state">当前筛选下没有结构占位任务。</div>'}</div>`;
+      }
+      function renderProjectsPanel() {
+        return `${workbenchHeader('projects','哪些项目需要继续推进？','项目','项目只保留名称、阶段、负责人和下一节点的位置。这里没有虚构百分比，也没有卡片墙。',['4 PROJECT SLOTS','PROGRESS PLACEHOLDER','MEMORY ONLY'])}<div class="project-list">${WORKBENCH_FIXTURE.projects.map((project) => `<article class="project-row"><div class="project-id">${project.code}</div><div><h3>${project.name}</h3><p>${project.summary} · 下一步：${project.nextStep}</p><div class="project-scale" role="img" aria-label="进度位置，尚未接入真实进度">${'<i></i>'.repeat(5)}</div><span class="project-scale-note">PROGRESS / PLACEHOLDER</span></div><dl class="project-meta"><div><dt>阶段</dt><dd>${project.phase}</dd></div><div><dt>负责</dt><dd>${project.owner}</dd></div><div><dt>任务</dt><dd>${WORKBENCH_FIXTURE.tasks.filter((task) => task.projectId === project.id).length} 条占位</dd></div></dl><div class="project-state-cell">${statusChip(project.status,PROJECT_STATUS_LABELS[project.status])}</div></article>`).join('')}</div><p class="block-note">进度刻度只显示未填充的位置；任务数来自合成 fixture，不代表真实项目规模。</p>`;
+      }
+      function renderReviewPanel() {
+        const reviewStatus = store.article.review.status;
+        const draft = store.article.draft;
+        const canApprove = store.role === 'author' && Boolean(draft);
+        const canPublish = (store.role === 'agent' || store.role === 'author') && currentDraftIsApproved();
+        const canProject = store.role === 'author' && store.article.release?.status === 'active' && currentDraftIsApproved();
+        const articleStatus = store.article.release?.status === 'active' ? 'published' : reviewStatus;
+        const subview = store.ui.reviewSubview || 'article';
+        return `${workbenchHeader('review','哪些变更需要作者决定？','审阅与投影','这里把 D5 的发布门禁与 D6 的私有工作台接在同一条状态链上。公开页面只读取已批准、已投影的版本。',[`${reviewPendingCount()} PENDING`, 'ACTOR / '+ROLE_LABELS[store.role].toUpperCase(), 'NO FILES WRITTEN'])}<div class="workbench-subnav"><button class="subnav-button" type="button" data-review-subview="article" aria-pressed="${subview === 'article'}">内容审阅</button><button class="subnav-button" type="button" data-review-subview="ledger" aria-pressed="${subview === 'ledger'}">规划投影</button></div>${subview === 'ledger' ? renderLedgerPanel() : `<section class="review-detail" aria-labelledby="reviewDetailHeading"><header class="review-detail-header"><div><h3 id="reviewDetailHeading">${store.article.id} · 内容链</h3><p>raw → L0/L1 draft → L2 批准 → release → Desk projection</p></div>${statusChip(articleStatus, REVIEW_STATUS_LABELS[reviewStatus] || articleStatus.toUpperCase())}</header><div class="review-detail-body">${draft ? `<div class="revision-grid"><div class="revision-card"><h4>RAW / IMMUTABLE</h4><p>revision: ${store.article.raw.revision}<br>hash: ${store.article.raw.hash}<br>内容不可覆盖</p></div><div class="revision-card"><h4>DRAFT / L0-L1</h4><p>revision: ${draft.revision}<br>hash: ${draft.hash}<br>agent_note: ${draft.agentNote}</p></div></div><div class="diff-box"><header><span>PREVIEW / SYNTHETIC DIFF</span><span>${store.article.diffOpen ? 'OPEN' : 'CLOSED'}</span></header><pre><span class="minus">- ${draft.diff.removed}</span>\n<span class="plus">+ ${draft.diff.added}</span>\n<span class="plus">+ agent_note: ${draft.agentNote}</span></pre></div>` : `<div class="empty-state">尚未生成 draft。raw 保持不可变，Agent 可以先生成一份 L0/L1 结构草稿。</div>`}<div class="gate-note ${store.article.release?.status === 'active' ? 'published' : reviewStatus === 'approved' ? 'approved' : reviewStatus === 'returned' ? 'blocked' : ''}">${renderGateNote()}</div><div class="detail-actions">${store.role === 'agent' ? `<button class="action-button primary" type="button" data-action="prepare-draft">${draft ? '生成新 draft' : '生成 L0/L1 draft'}</button>` : ''}<button class="action-button" type="button" data-action="preview-diff" ${draft ? '' : 'disabled'}>预览 diff</button>${store.role === 'author' ? `<button class="action-button primary" type="button" data-action="approve-review" ${canApprove ? '' : 'disabled'}>批准 L2</button><button class="action-button danger" type="button" data-action="return-review" ${canApprove ? '' : 'disabled'}>退回</button>` : `<button class="action-button" type="button" data-action="approve-review" disabled>Agent 不能批准</button>`}<button class="action-button primary" type="button" data-action="publish-article" ${draft ? '' : 'disabled'}>发布 release</button><button class="action-button" type="button" data-action="project-article" ${canProject ? '' : 'disabled'}>投影到 Desk</button><button class="action-button danger" type="button" data-action="rollback-article" ${store.article.release?.status === 'active' ? '' : 'disabled'}>回滚</button></div><p class="review-help">角色切换只改变能力，不改变状态。Agent 可以生成与发布；L2 批准和公开投影需要作者。</p></div></section>${renderFixtureReviews()}`}</section>`;
+      }
+      function renderGateNote() {
+        if (!store.article.draft) return '门禁：尚未生成 draft。Agent 需要先提交 L0/L1 结构整理。';
+        if (store.article.review.status === 'pending') return '门禁：L2 尚未批准。尝试发布只会记录阻断 audit，不生成 release。';
+        if (store.article.review.status === 'returned') return '门禁：当前 draft 已退回。需要 Agent 生成新的 draft revision 后重新审阅。';
+        if (!currentDraftIsApproved()) return '门禁：批准绑定与当前 draft hash 不一致，发布被阻断。';
+        if (store.article.release?.status === 'active' && !articleIsPublic()) return 'release 已存在，但尚未投影到 Desk。公开内容仍不可见。';
+        if (articleIsPublic()) return `已公开：${store.article.projection.sourceRevision} 已投影到 Desk，可回滚或撤回。`;
+        return '门禁：L2 已批准。Agent 可以发布 release，作者可以继续投影到 Desk。';
+      }
+      function renderFixtureReviews() {
+        return `<section class="block"><div class="block-head"><h3>结构审阅队列</h3><span>WORKBENCH / FIXTURE</span></div><div class="review-list">${WORKBENCH_FIXTURE.reviews.map((item) => { const status = store.workbench.reviews[item.id]; return `<article class="review-row"><div class="review-id">${item.code}</div><div><div class="review-head"><h3>${item.title}</h3>${statusChip(status, REVIEW_STATUS_LABELS[status])}</div><p>${projectById(item.projectId).name} · ${item.summary}</p><p class="review-kind">类型：${item.kind} · 提交者：${item.submitter}</p>${status === 'returned' ? '<p class="review-kind return-note">退回原因位置 · 原型不要求填写理由</p>' : ''}</div><div class="review-actions"><button class="decision" type="button" data-review-id="${item.id}" data-review-decision="approved" aria-pressed="${status === 'approved'}">批准</button><button class="decision" type="button" data-review-id="${item.id}" data-review-decision="returned" aria-pressed="${status === 'returned'}">退回</button></div></article>`; }).join('')}</div><p class="review-help">结构队列与文章内容链共用工作台，但不是公开内容源；所有按钮只改变当前页面内存。</p></section>`;
+      }
+      function renderLedgerPanel() {
+        const canEdit = store.role === 'author';
+        const projection = store.planProjection;
+        const projectionLabel = projection.status === 'active' ? 'ACTIVE' : projection.status === 'stale' ? 'STALE / REPROJECT' : projection.status === 'withdrawn' ? 'WITHDRAWN' : 'NO PROJECTION';
+        const projectionNote = projection.status === 'active' || projection.status === 'stale'
+          ? `<div class="gate-note ${projection.status === 'stale' ? 'blocked' : 'approved'}">当前 allowlist：${projection.fieldAllowlist.map((id) => LEDGER_LABELS[id]).join('、')} · source revision：${projection.sourceRevision}${projection.status === 'stale' ? ' · 字段策略已变更，需要重新投影' : ''}</div>`
+          : '';
+        return `<section class="ledger-panel" aria-labelledby="ledgerHeading"><header class="ledger-header"><div><h3 id="ledgerHeading">Ledger Snapshot / ${store.ledger.snapshotId}</h3><p>字段级显式公开。原始值属于独立规划来源域，这里只演示可见性和投影边界。</p></div>${statusChip(projection.status, projectionLabel)}</header><div class="ledger-body">${store.ledger.fields.map((field) => `<div class="ledger-field"><div><strong>${LEDGER_LABELS[field.id]}</strong><small>unit: ${field.unit} · fixture value: ${field.value}</small></div><span class="ledger-value">${canEdit ? field.value : (field.visibility === 'public' ? field.value : '私密字段')}</span><button class="visibility-button ${field.visibility === 'public' ? 'public' : ''}" type="button" data-ledger-toggle="${field.id}" ${canEdit ? '' : 'disabled'}>${field.visibility === 'public' ? '公开' : '私密'}</button></div>`).join('')}<div class="ledger-note">公开动作：作者选择字段 → 预览 allowlist → 生成 Plan projection。Agent 可以读取状态，但不能批准财务字段投影。</div><div class="projection-actions"><button class="action-button primary" type="button" data-action="project-plan" ${canEdit ? '' : 'disabled'}>投影公开字段</button><button class="action-button danger" type="button" data-action="withdraw-plan" ${canEdit && projection.status === 'active' ? '' : 'disabled'}>撤回 Plan projection</button></div>${projectionNote}</div></section>`;
+      }
+      function renderContextMarkup() {
+        const last = store.audit[0];
+        return `<div class="context-group"><h3>FIXTURE BOUNDARY</h3><span class="context-badge">PRIVATE STRUCTURE FIXTURE</span><p>NO REAL DATA / 不连接账号、项目、审阅或文件系统。</p><p class="context-note">角色：${ROLE_LABELS[store.role]} · route：${store.route}</p></div><div class="context-group"><h3>LIVE STATE</h3><div class="live-row"><span>当前视图</span><b>${VIEW_LABELS[store.workbench.view]}</b></div><div class="live-row"><span>任务筛选</span><b>${TASK_STATUS_LABELS[store.workbench.taskFilter]}</b></div><div class="live-row"><span>文章审阅</span><b>${REVIEW_STATUS_LABELS[store.article.review.status]}</b></div><div class="live-row"><span>文章投影</span><b>${store.article.projection.status}</b></div><div class="live-row"><span>Plan 投影</span><b>${store.planProjection.status}</b></div><div class="live-row"><span>审计事件</span><b>${store.audit.length} 条</b></div><div class="live-row"><span>最近操作</span><b>${last ? `${last.action} · ${last.result}` : '尚无'}</b></div></div><div class="context-group"><h3>AUDIT / MEMORY</h3><ol class="audit">${store.audit.length ? store.audit.slice(0,8).map((entry) => `<li><b>${entry.actor}</b> · ${entry.action} · ${entry.result}<br>${entry.detail}</li>`).join('') : '<li>尚无内存操作</li>'}</ol></div><div class="context-group"><h3>KEYBOARD / A11Y</h3><p>Tab 聚焦，Enter 或空格触发；焦点环始终可见。</p><p>最小点击区 44px；reduced-motion 与 forced-colors 已覆盖。</p></div>`;
+      }
+      function renderContext() {
+        if (store.route === 'workbench' && roleCanPrivate()) {
+          const context = $('.workbench-layout .context', $('#workbenchContent'));
+          if (context) context.innerHTML = renderContextMarkup();
+        }
+      }
+
+      function renderDrawer() {
+        const open = store.ui.drawerOpen;
+        const drawer = $('#demoDrawer');
+        drawer.classList.toggle('is-open', open);
+        $('#drawerBackdrop').classList.toggle('is-open', open);
+        drawer.setAttribute('aria-hidden', String(!open));
+        $('#drawerState').textContent = `${store.route} · ${ROLE_LABELS[store.role]} · 仅内存`;
+        $('#drawerWorkbenchButton').hidden = store.role === 'visitor';
+        $('#drawerFlow').innerHTML = store.role === 'visitor'
+          ? '<strong>访客路径</strong><br>窗 → 写作 → 公开文章 / 空状态 → 规划（若已投影）'
+          : store.role === 'author'
+            ? '<strong>作者路径</strong><br>工作台 → 批准 / 退回 → 文章投影 → 字段白名单 → Plan 投影'
+            : '<strong>Agent 路径</strong><br>生成 draft → diff → 未批准发布被阻断 → 作者批准后发布 → 回滚';
+        $$('.role-option', drawer).forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.role === store.role)));
+      }
+      function openDrawer(event) {
+        if (event) event.preventDefault();
+        store.ui.drawerOpen = true;
+        renderDrawer();
+        $('#demoDrawer .drawer-close').focus();
+      }
+      function closeDrawer() {
+        const active = document.activeElement;
+        const restoreFocus = $('#demoDrawer').contains(active);
+        store.ui.drawerOpen = false;
+        renderDrawer();
+        if (restoreFocus) {
+          const trigger = store.route === 'workbench'
+            ? $('#workbenchContent .workbench-topbar [data-action="open-drawer"]')
+            : store.route === 'window'
+              ? $('#sceneTopbar [data-action="open-drawer"]')
+              : $('#deskTopbar [data-action="open-drawer"]');
+          trigger?.focus();
+        }
+      }
+      function resetDemo() {
+        const savedWindow = clone(store.window);
+        store = makeInitialStore();
+        store.window = savedWindow;
+        store.route = 'window';
+        setHash('window', true);
+        renderApp('workbench');
+        toast('合成状态已重置；窗外预览保留');
+        announce('合成状态已恢复到初始值');
+      }
+
+      function deny(action, target, detail) {
+        record(action, target, 'denied', detail);
+        toast(`已拒绝：${detail}`);
+        announce(`操作被拒绝：${detail}`);
+      }
+      function prepareDraft() {
+        if (store.role !== 'agent') return deny('content.prepare', store.article.id, '只有 Agent 可以生成 L0/L1 draft');
+        const number = store.article.draft ? Number(store.article.draft.revision.split('-')[1]) + 1 : 1;
+        const revision = `draft-${String(number).padStart(3,'0')}`;
+        const hash = `draft-hash-${String(number).padStart(3,'0')}`;
+        store.article.draft = { revision, hash, agentNote: '未改变原稿主张，仅整理结构。', diff: { removed: '这是一份只用于组合验证的合成原稿。', added: '这是一份只用于组合验证的合成草稿。' } };
+        store.article.review = { status: 'pending', boundDraftHash: null, actor: null };
+        store.article.diffOpen = false;
+        record('content.prepare', store.article.id, 'accepted', `生成 ${revision} · raw 保持不可变`, hash);
+        toast(`已生成 ${revision}，等待作者审阅`);
+        renderWorkbench();
+      }
+      function previewDiff() {
+        if (!store.article.draft) return deny('content.preview', store.article.id, '没有可预览的 draft');
+        store.article.diffOpen = true;
+        record('content.preview', store.article.id, 'shown', 'synthetic diff shown · agent_note attached', store.article.draft.hash);
+        toast('diff 已展开；未改变批准状态');
+        renderWorkbench();
+      }
+      function approveReview() {
+        if (store.role !== 'author') return deny('content.approve', store.article.id, 'Agent 不能批准 L2，当前角色不是作者');
+        if (!store.article.draft) return deny('content.approve', store.article.id, '没有 draft 可批准');
+        if (currentDraftIsApproved()) { toast('当前 draft 已批准，未生成重复状态'); return; }
+        store.article.review = { status: 'approved', boundDraftHash: store.article.draft.hash, actor: 'author' };
+        record('content.approve', store.article.id, 'accepted', `L2 accepted · bound ${store.article.draft.hash}`, store.article.draft.hash);
+        toast('L2 已批准；发布门禁已打开');
+        renderWorkbench();
+      }
+      function returnReview() {
+        if (store.role !== 'author') return deny('content.return', store.article.id, '只有作者可以退回 L2 审阅');
+        if (!store.article.draft) return deny('content.return', store.article.id, '没有 draft 可退回');
+        store.article.review = { status: 'returned', boundDraftHash: null, actor: 'author' };
+        record('content.return', store.article.id, 'returned', 'draft returned · new revision required', store.article.draft.hash);
+        toast('draft 已退回；需要新的 draft revision');
+        renderWorkbench();
+      }
+      function publishArticle() {
+        if (!['agent','author'].includes(store.role)) return deny('content.publish', store.article.id, '访客不能发布内容');
+        if (!currentDraftIsApproved()) {
+          store.article.diffOpen = true;
+          record('content.publish.blocked', store.article.id, 'blocked', 'L2 approval required · no release written');
+          toast('已阻断：当前 draft 未获得作者批准');
+          renderWorkbench();
+          return;
+        }
+        if (store.article.release?.status === 'active' && store.article.release.draftHash === store.article.draft.hash) {
+          record('content.publish', store.article.id, 'idempotent', `release ${store.article.release.id} already current`, store.article.draft.hash);
+          toast('重复发布按 release-id 幂等处理');
+          renderWorkbench();
+          return;
+        }
+        store.article.release = { id: 'release-fixture-001', status: 'active', draftHash: store.article.draft.hash };
+        record('content.publish', store.article.id, 'published', 'release created · projection still private', store.article.draft.hash);
+        toast('release 已生成；公开面仍需作者显式投影');
+        renderWorkbench();
+      }
+      function projectArticle() {
+        if (store.role !== 'author') return deny('projection.article', store.article.id, '只有作者可以把文章投影到 Desk');
+        if (!store.article.release || store.article.release.status !== 'active' || !currentDraftIsApproved()) return deny('projection.article', store.article.id, '需要 active release 和当前 draft 的作者批准');
+        if (store.article.projection.status === 'active' && store.article.projection.sourceRevision === store.article.release.draftHash) {
+          record('projection.article', store.article.id, 'idempotent', 'same source revision + target already active', store.article.release.draftHash);
+          toast('文章投影已是当前版本');
+          renderWorkbench();
+          return;
+        }
+        store.article.projection = { id: 'projection-article-001', target: 'desk', sourceRevision: store.article.release.draftHash, status: 'active' };
+        record('projection.article', store.article.id, 'active', 'approved release projected to Desk', store.article.release.draftHash);
+        toast('文章已投影到 Desk；切换访客可查看');
+        renderWorkbench();
+      }
+      function rollbackArticle() {
+        if (!['agent','author'].includes(store.role)) return deny('content.rollback', store.article.id, '访客不能回滚内容');
+        if (!store.article.release || store.article.release.status !== 'active') {
+          record('content.rollback.blocked', store.article.id, 'blocked', 'no active release · rollback refused');
+          toast('已阻断：没有 active release 可回滚');
+          renderWorkbench();
+          return;
+        }
+        store.article.release.status = 'rolled_back';
+        store.article.projection.status = 'withdrawn';
+        record('content.rollback', store.article.id, 'rolled_back', 'release withdrawn from public projection', store.article.release.draftHash);
+        toast('文章已回滚；Desk 公开投影已撤回');
+        renderWorkbench();
+      }
+      function toggleLedger(id) {
+        if (store.role !== 'author') return deny('plan.visibility.update', id, 'Agent 不能改变财务字段公开策略');
+        const field = store.ledger.fields.find((item) => item.id === id);
+        if (!field) return;
+        field.visibility = field.visibility === 'public' ? 'private' : 'public';
+        if (store.planProjection.status === 'active') store.planProjection.status = 'stale';
+        record('plan.visibility.update', id, field.visibility, `${LEDGER_LABELS[id]} → ${field.visibility}` , store.ledger.revision);
+        toast(`${LEDGER_LABELS[id]}：${field.visibility === 'public' ? '公开' : '私密'}；需要重新投影`);
+        renderWorkbench();
+      }
+      function projectPlan() {
+        if (store.role !== 'author') return deny('projection.plan', store.ledger.snapshotId, '财务字段投影必须由作者批准');
+        const allowlist = store.ledger.fields.filter((field) => field.visibility === 'public').map((field) => field.id);
+        if (!allowlist.length) return deny('projection.plan', store.ledger.snapshotId, '没有公开字段，无法生成 projection');
+        if (store.planProjection.status === 'active' && store.planProjection.sourceRevision === store.ledger.revision && JSON.stringify(store.planProjection.fieldAllowlist) === JSON.stringify(allowlist)) {
+          record('projection.plan', store.ledger.snapshotId, 'idempotent', 'same source revision + allowlist already active', store.ledger.revision);
+          toast('Plan projection 已是当前版本');
+          renderWorkbench();
+          return;
+        }
+        store.planProjection = { id: 'projection-plan-001', target: 'desk', sourceRevision: store.ledger.revision, fieldAllowlist: allowlist, status: 'active' };
+        record('projection.plan', store.ledger.snapshotId, 'active', `allowlist ${allowlist.join(',')}`, store.ledger.revision);
+        toast('Plan projection 已激活；访客只看到白名单字段');
+        renderWorkbench();
+      }
+      function withdrawPlan() {
+        if (store.role !== 'author') return deny('projection.plan.withdraw', store.ledger.snapshotId, '只有作者可以撤回 Plan projection');
+        if (store.planProjection.status !== 'active') return deny('projection.plan.withdraw', store.ledger.snapshotId, '没有 active Plan projection');
+        store.planProjection.status = 'withdrawn';
+        record('projection.plan.withdraw', store.ledger.snapshotId, 'withdrawn', 'public Plan route withdrawn', store.planProjection.sourceRevision);
+        toast('Plan projection 已撤回；公开字段不再可见');
+        renderWorkbench();
+      }
+      function decideFixtureReview(id, decision) {
+        if (!['author','agent'].includes(store.role)) return deny('review.decide', id, '访客不能修改私有审阅队列');
+        const current = store.workbench.reviews[id];
+        if (current === decision) { toast('当前条目已经是这个状态'); return; }
+        store.workbench.reviews[id] = decision;
+        record(decision === 'approved' ? 'review.approve' : 'review.return', id, decision, `fixture review → ${REVIEW_STATUS_LABELS[decision]}`);
+        renderWorkbench();
+      }
+      function bindAction(button) {
+        const action = button.dataset.action;
+        const handlers = { 'prepare-draft': prepareDraft, 'preview-diff': previewDiff, 'approve-review': approveReview, 'return-review': returnReview, 'publish-article': publishArticle, 'project-article': projectArticle, 'rollback-article': rollbackArticle, 'project-plan': projectPlan, 'withdraw-plan': withdrawPlan, 'open-drawer': openDrawer };
+        if (handlers[action]) button.addEventListener('click', handlers[action]);
+      }
+
+      function updateTime() {
+        const now = new Date();
+        $('#timeLabel').textContent = `${now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} · ${store.window.source === 'manual' ? '手动预览' : '默认预览'}`;
+      }
+
+      /* Lightweight WebGL enhancement kept behind the poster fallback. */
+      const canvas = $('#fxCanvas');
+      const gl = canvas.getContext('webgl2', { alpha: true, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false });
+      const fallback = $('#fallback');
+      const renderLabel = $('#renderLabel');
+      let raf = 0;
+      let running = false;
+      let lost = false;
+      let startTime = performance.now();
+      let lastFrame = startTime;
+      let frames = 0;
+      let frameTimes = [];
+      let program;
+      let vao;
+      let uniforms;
+      function showFallback(message) {
+        fallback.classList.add('is-visible');
+        canvas.classList.add('is-static');
+        lost = true;
+        renderLabel.textContent = message || 'poster ready · static fallback';
+      }
+      function compileShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) || 'shader error');
+        return shader;
+      }
+      function setupFx() {
+        if (!gl || reducedTransparency.matches) { showFallback(reducedTransparency.matches ? 'poster ready · transparency reduced' : 'poster ready · WebGL2 unavailable'); return; }
+        const vs = `#version 300 es\nprecision highp float;\nout vec2 uv;\nvoid main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);uv=p;gl_Position=vec4(p*2.0-1.0,0.0,1.0);}`;
+        const fs = `#version 300 es\nprecision highp float;\nin vec2 uv;out vec4 color;uniform vec2 uResolution;uniform float uTime;uniform float uIntensity;uniform float uWeather;float hash21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}float streak(vec2 p,float scale,float speed,float seed){p.x*=uResolution.x/uResolution.y;vec2 s=p*vec2(scale,scale*.32);s.y+=uTime*speed;vec2 cell=floor(s),f=fract(s)-.5;float n=hash21(cell+seed);float line=smoothstep(.034,0.,abs(f.x+sin(f.y*5.+n*8.)*.03));float gate=step(.70,n)*smoothstep(.48,.05,abs(f.y));return line*gate;}void main(){vec2 p=uv-.5;float strength=uIntensity*.0105;float rain=(streak(p,72.,1.4,2.3)+streak(p+.37,104.,2.,7.1))*strength;float fog=hash21(floor((p+uTime*.008)*vec2(8.,5.)));float weatherMix=smoothstep(.15,.75,uWeather);float alpha=mix(rain,rain+fog*.12,weatherMix)*(.35+.65*smoothstep(.1,.95,uv.y));color=vec4(vec3(.82,.9,.89),clamp(alpha,0.,.22));}`;
+        try {
+          program = gl.createProgram();
+          gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vs));
+          gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fs));
+          gl.linkProgram(program);
+          if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || 'program link error');
+          uniforms = { resolution: gl.getUniformLocation(program, 'uResolution'), time: gl.getUniformLocation(program, 'uTime'), intensity: gl.getUniformLocation(program, 'uIntensity'), weather: gl.getUniformLocation(program, 'uWeather') };
+          vao = gl.createVertexArray();
+          gl.bindVertexArray(vao);
+          gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        } catch (error) { console.error(error); showFallback('poster ready · shader fallback'); }
+      }
+      function resizeFx() {
+        if (!gl || lost) return;
+        const dpr = Math.min(devicePixelRatio || 1, 1.25);
+        const width = Math.max(1, Math.round(innerWidth * dpr));
+        const height = Math.max(1, Math.round(innerHeight * dpr));
+        if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+        gl.viewport(0, 0, width, height);
+      }
+      function weatherValue() { return store.window.weather === '雨' ? 1 : store.window.weather === '雾' ? .85 : store.window.weather === '阴' ? .55 : .15; }
+      function drawFx(now) {
+        if (!running || !gl || lost) return;
+        raf = requestAnimationFrame(drawFx);
+        const dt = now - lastFrame; lastFrame = now;
+        if (frames > 8) frameTimes.push(dt);
+        if (frameTimes.length > 90) frameTimes.shift();
+        frames += 1;
+        gl.useProgram(program); gl.bindVertexArray(vao);
+        gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+        gl.uniform1f(uniforms.time, (now - startTime) / 1000);
+        gl.uniform1f(uniforms.intensity, store.window.intensity / 100 * (store.window.weather === '晴' ? .22 : 1));
+        gl.uniform1f(uniforms.weather, weatherValue());
+        gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (frames % 30 === 0 && frameTimes.length > 10) {
+          const sorted = [...frameTimes].sort((a,b) => a-b); const p95 = sorted[Math.floor(sorted.length*.95)];
+          renderLabel.textContent = `webgl2 enhancement · p95 ${(1000 / p95).toFixed(0)} fps`;
+          window.__composedWindowStats = { frames, fpsP95: +(1000 / p95).toFixed(1), width: canvas.width, height: canvas.height };
+        }
+      }
+      function startFx() {
+        if (!gl || !program || lost || reducedMotion.matches || store.window.paused) return;
+        if (running) return;
+        running = true; canvas.classList.remove('is-paused'); lastFrame = performance.now(); raf = requestAnimationFrame(drawFx); renderLabel.textContent = 'webgl2 enhancement · running';
+      }
+      function stopFx() {
+        running = false; cancelAnimationFrame(raf); canvas.classList.add('is-paused'); renderLabel.textContent = reducedMotion.matches ? 'poster ready · reduced motion' : 'poster ready · paused';
+      }
+      function setWindowState(partial, message) {
+        Object.assign(store.window, partial); saveWindowState(); updateWindowLabels(); updateTime();
+        if (store.window.paused) stopFx(); else startFx();
+        if (message) { announce(message); toast(message); }
+      }
+
+      function bindGlobalEvents() {
+        document.addEventListener('click', (event) => {
+          const routeTarget = event.target.closest('[data-route]');
+          if (routeTarget && !routeTarget.closest('#primaryContent')?.matches('[inert]')) {
+            event.preventDefault(); navigate(routeTarget.dataset.route);
+            return;
+          }
+          const actionTarget = event.target.closest('[data-action]');
+          if (actionTarget) {
+            const action = actionTarget.dataset.action;
+            if (action === 'open-drawer' && !actionTarget.closest('#workbenchContent')) openDrawer(event);
+            if (action === 'close-drawer') closeDrawer();
+            if (action === 'pause') setWindowState({ paused: !store.window.paused }, store.window.paused ? '已恢复首页动效' : '已暂停首页动效');
+            if (action === 'reset') resetDemo();
+            if (action === 'go-workbench') { closeDrawer(); navigate('workbench'); }
+          }
+          const roleTarget = event.target.closest('[data-role]');
+          if (roleTarget) {
+            const wasWorkbench = store.route === 'workbench';
+            store.role = roleTarget.dataset.role;
+            if (wasWorkbench && store.role === 'visitor') {
+              closeDrawer();
+              navigate('writing');
+            } else {
+              renderDrawer();
+              if (wasWorkbench) {
+                renderWorkbench();
+                closeDrawer();
+              }
+            }
+            toast(`演示角色已切换为${ROLE_LABELS[store.role]}（不是认证）`);
+            announce(`当前角色：${ROLE_LABELS[store.role]}`);
+          }
+          const subviewTarget = event.target.closest('[data-review-subview]');
+          if (subviewTarget && store.route === 'workbench' && roleCanPrivate()) { store.ui.reviewSubview = subviewTarget.dataset.reviewSubview; renderWorkbench(); }
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && store.ui.drawerOpen) closeDrawer();
+        });
+        window.addEventListener('hashchange', () => navigate(routeFromHash(), { fromHash: true }));
+        window.addEventListener('popstate', () => navigate(routeFromHash(), { fromHash: true }));
+        window.addEventListener('resize', resizeFx, { passive: true });
+        document.addEventListener('visibilitychange', () => { if (document.hidden) stopFx(); else if (!store.window.paused) startFx(); });
+        reducedMotion.addEventListener?.('change', () => { if (reducedMotion.matches) stopFx(); else if (!store.window.paused) startFx(); });
+        $('#sceneTopbar').addEventListener('click', (event) => {
+          const season = event.target.closest('[data-season]'); if (season) setWindowState({ season: season.dataset.season, source: 'manual' }, `已切换到${season.dataset.season}预览`);
+        });
+      }
+
+      function injectWindowDrawerControls() {
+        const section = document.createElement('section');
+        section.className = 'drawer-section';
+        section.innerHTML = `<span class="drawer-label">窗外预览</span><div class="role-options"><button class="role-option" type="button" data-season="春" aria-pressed="false">春</button><button class="role-option" type="button" data-season="夏" aria-pressed="false">夏</button><button class="role-option" type="button" data-season="秋" aria-pressed="false">秋</button><button class="role-option" type="button" data-season="冬" aria-pressed="true">冬</button></div><div class="role-options" style="margin-top:6px"><button class="role-option" type="button" data-weather="晴" aria-pressed="true">晴</button><button class="role-option" type="button" data-weather="阴" aria-pressed="false">阴</button><button class="role-option" type="button" data-weather="雨" aria-pressed="false">雨</button><button class="role-option" type="button" data-weather="雾" aria-pressed="false">雾</button></div><label class="drawer-label" for="intensity" style="margin-top:12px">雨雾强度 <span id="intensityValue">42%</span></label><input id="intensity" type="range" min="0" max="100" value="42"><div class="drawer-actions" style="margin-top:12px"><button class="drawer-button" type="button" data-action="real">恢复默认预览</button></div>`;
+        $('#demoDrawer').querySelector('.drawer-section:last-of-type').before(section);
+        section.querySelectorAll('[data-season]').forEach((button) => button.addEventListener('click', () => setWindowState({ season: button.dataset.season, source: 'manual' }, `已切换到${button.dataset.season}预览`)));
+        section.querySelectorAll('[data-weather]').forEach((button) => button.addEventListener('click', () => setWindowState({ weather: button.dataset.weather, source: 'manual' }, `已切换到${button.dataset.weather}预览`)));
+        $('#intensity').addEventListener('input', (event) => setWindowState({ intensity: Number(event.target.value), source: 'manual' }));
+        section.querySelector('[data-action="real"]').addEventListener('click', () => setWindowState({ season: '冬', weather: '晴', intensity: 42, source: 'manual' }, '真实天气 provider 尚未接入，已恢复默认预览'));
+      }
+
+      loadWindowState();
+      injectWindowDrawerControls();
+      setupFx();
+      resizeFx();
+      bindGlobalEvents();
+      updateTime();
+      updateWindowLabels();
+      if (store.window.paused || reducedMotion.matches || reducedTransparency.matches) stopFx(); else startFx();
+      const initialRoute = routeFromHash();
+      setHash(initialRoute, true);
+      renderApp('');
+    })();
+  </script>
+  <script src="./composed-runtime.js"></script>
+</body>
+</html>

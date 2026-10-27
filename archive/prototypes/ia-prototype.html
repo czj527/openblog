@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Openblog / 信息架构原型</title>
+  <style>
+    :root {
+      --ink: #172429;
+      --muted: #65747a;
+      --paper: #f0f3f1;
+      --surface: #fbfcfa;
+      --surface-deep: #e2ebe7;
+      --line: rgba(23, 36, 41, .16);
+      --line-strong: rgba(23, 36, 41, .3);
+      --accent: #1e756d;
+      --accent-soft: #d7ece7;
+      --warning: #96651a;
+      --warning-soft: #f4e8c8;
+      --font-sans: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--paper); }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--font-sans); line-height: 1.55; }
+    button, a { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #cf6d2e; outline-offset: 3px; }
+    .page { width: min(1440px, calc(100% - 48px)); margin: 0 auto; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 0; border-bottom: 1px solid var(--line-strong); }
+    .mark { display: inline-flex; align-items: center; gap: 10px; border: 0; padding: 0; background: transparent; cursor: pointer; font: 650 14px var(--font-mono); letter-spacing: .04em; }
+    .mark-symbol { display: grid; grid-template-columns: 1fr 1fr; width: 18px; height: 18px; gap: 2px; }
+    .mark-symbol i { display: block; border: 1px solid var(--ink); background: var(--surface); }
+    .topnav { display: flex; align-items: center; gap: 5px; }
+    .topnav button { border: 1px solid transparent; border-radius: 999px; padding: 8px 12px; background: transparent; cursor: pointer; color: var(--muted); font-size: 13px; }
+    .topnav button:hover, .topnav button[aria-current="page"] { border-color: var(--line); color: var(--ink); background: rgba(251,252,250,.8); }
+    .topnav button[hidden] { display: none; }
+    .phase-label { color: var(--muted); font: 10px var(--font-mono); text-transform: uppercase; letter-spacing: .08em; }
+
+    .workspace { display: grid; grid-template-columns: 204px minmax(0, 1fr); gap: 48px; padding: 46px 0 72px; }
+    .route-rail { position: sticky; top: 20px; align-self: start; }
+    .kicker { color: var(--accent); font: 600 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+    .rail-title { margin: 9px 0 18px; font-size: 17px; line-height: 1.25; }
+    .route-list { display: grid; gap: 7px; }
+    .route-button { display: grid; grid-template-columns: 1fr auto; gap: 3px 8px; width: 100%; border: 1px solid transparent; border-radius: 5px; padding: 11px 12px; background: transparent; cursor: pointer; text-align: left; }
+    .route-button:hover, .route-button[aria-current="page"] { border-color: var(--line); background: var(--surface); }
+    .route-button strong { font-size: 13px; font-weight: 650; }
+    .route-button small { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+    .route-state { align-self: center; border-radius: 3px; padding: 2px 5px; font: 600 9px var(--font-mono); }
+    .route-state-live { color: var(--accent); background: var(--accent-soft); }
+    .route-state-structure { color: #2c5d93; background: #deebf8; }
+    .route-state-empty { color: var(--muted); background: #e5e8e7; }
+    .route-state-pending { color: var(--warning); background: var(--warning-soft); }
+    .rail-note { margin-top: 24px; padding-top: 14px; border-top: 1px dashed var(--line-strong); color: var(--muted); font-size: 11px; }
+    .rail-note b { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 650; }
+
+    .surface { min-width: 0; }
+    .surface-header { display: flex; align-items: start; justify-content: space-between; gap: 32px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+    .breadcrumb { color: var(--muted); font: 11px var(--font-mono); }
+    .surface-title { margin-top: 8px; font-size: clamp(28px, 4vw, 50px); line-height: 1.1; letter-spacing: -.02em; font-weight: 650; }
+    .surface-description { max-width: 600px; margin-top: 12px; color: var(--muted); font-size: 15px; }
+    .surface-status { flex: 0 0 auto; border-left: 1px solid var(--line-strong); padding-left: 14px; color: var(--muted); font: 10px/1.5 var(--font-mono); text-transform: uppercase; }
+    .view { display: none; padding-top: 28px; }
+    .view.is-active { display: block; }
+
+    .window-view { min-height: 560px; position: relative; overflow: hidden; display: grid; place-items: center; border: 1px solid #334b54; background: linear-gradient(155deg, #b7c9c8 0%, #7d9a99 46%, #2d464c 100%); color: #f5f8f5; }
+    .window-view::before { content: ""; position: absolute; inset: 14% 0 0; background: linear-gradient(145deg, transparent 0 35%, rgba(17,44,50,.35) 35% 36%, transparent 36% 53%, rgba(18,47,51,.25) 53% 55%, transparent 55%); opacity: .9; }
+    .window-view::after { content: ""; position: absolute; right: 13%; bottom: 17%; width: 44px; height: 34px; border: 2px solid rgba(241,218,167,.6); background: rgba(244,210,125,.55); box-shadow: 0 0 42px rgba(244,210,125,.42); }
+    .window-copy { position: relative; z-index: 1; display: grid; justify-items: center; gap: 20px; padding: 30px; text-align: center; }
+    .window-copy span { color: rgba(245,248,245,.74); font: 10px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; }
+    .window-copy h2 { max-width: 520px; margin: 0; font-size: clamp(26px, 4vw, 48px); line-height: 1.1; font-weight: 550; }
+    .window-copy p { max-width: 440px; margin: 0; color: rgba(245,248,245,.78); font-size: 13px; }
+    .window-entry { min-height: 44px; border: 1px solid rgba(255,255,255,.55); border-radius: 999px; padding: 10px 18px; background: rgba(18,38,43,.24); color: #fff; cursor: pointer; backdrop-filter: blur(10px); }
+    .window-entry:hover { background: rgba(18,38,43,.42); }
+    .window-hud { position: absolute; z-index: 1; left: 18px; bottom: 16px; color: rgba(245,248,245,.72); font: 10px var(--font-mono); }
+    .window-badge { position: absolute; z-index: 1; right: 18px; top: 16px; border: 1px solid rgba(255,255,255,.35); padding: 6px 8px; color: rgba(245,248,245,.78); font: 10px var(--font-mono); }
+
+    .desk-empty { min-height: 390px; display: grid; place-items: center; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; }
+    .empty-inner { max-width: 410px; padding: 32px; }
+    .empty-mark { display: grid; place-items: center; width: 44px; height: 44px; margin: 0 auto 20px; border: 1px solid var(--line-strong); border-radius: 50%; font: 22px var(--font-mono); }
+    .empty-inner h2 { margin: 0; font-size: 23px; font-weight: 600; }
+    .empty-inner p { margin-top: 9px; color: var(--muted); font-size: 13px; }
+    .empty-meta { margin-top: 26px; color: var(--muted); font: 10px var(--font-mono); }
+
+    .article-frame { display: grid; grid-template-columns: 170px minmax(0, 680px) 210px; gap: 36px; align-items: start; }
+    .article-side { color: var(--muted); font-size: 11px; }
+    .article-side h3 { margin: 0 0 12px; color: var(--ink); font: 600 10px var(--font-mono); text-transform: uppercase; }
+    .article-side p { margin: 0 0 10px; }
+    .fixture-label { display: inline-block; margin-bottom: 18px; border: 1px dashed var(--warning); padding: 5px 7px; color: var(--warning); background: var(--warning-soft); font: 600 10px var(--font-mono); }
+    .article-body { min-width: 0; }
+    .article-body h2 { margin: 0; font-size: clamp(25px, 4vw, 40px); line-height: 1.18; font-weight: 650; }
+    .article-body .placeholder-line { height: 10px; margin-top: 14px; border-radius: 2px; background: var(--surface-deep); }
+    .article-body .placeholder-line.short { width: 48%; }
+    .article-body .placeholder-line.medium { width: 72%; }
+    .article-copy { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+    .article-copy p { margin: 0 0 12px; }
+    .article-copy p:last-child { margin-bottom: 0; }
+    .article-rail { padding-left: 16px; border-left: 1px solid var(--line); }
+    .article-rail .rail-row { margin-bottom: 18px; }
+    .article-rail b { display: block; color: var(--ink); font: 600 10px var(--font-mono); text-transform: uppercase; }
+    .article-rail span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+
+    .plan-empty { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 40px; align-items: stretch; padding: 28px; border: 1px solid var(--line); background: var(--surface); }
+    .plan-empty h2 { font-size: 28px; line-height: 1.15; font-weight: 650; }
+    .plan-empty p { max-width: 580px; margin-top: 12px; color: var(--muted); font-size: 14px; }
+    .plan-requirements { display: grid; align-content: start; gap: 8px; padding-left: 20px; border-left: 1px solid var(--line); }
+    .plan-requirements span { color: var(--muted); font-size: 12px; }
+    .plan-requirements span::before { content: "—"; margin-right: 7px; color: var(--warning); }
+    .not-in-nav { margin-top: 26px; color: var(--muted); font: 10px var(--font-mono); }
+
+    .prototype-note { margin-top: 30px; padding: 15px 17px; border-left: 3px solid var(--accent); background: var(--accent-soft); color: #28534f; font-size: 12px; }
+    .prototype-note b { color: var(--ink); }
+    .footer { display: flex; justify-content: space-between; gap: 20px; padding: 20px 0 32px; border-top: 1px solid var(--line-strong); color: var(--muted); font: 10px var(--font-mono); }
+    .footer a { color: inherit; text-underline-offset: 3px; }
+
+    @media (max-width: 1080px) {
+      .workspace { grid-template-columns: 170px minmax(0, 1fr); gap: 28px; }
+      .article-frame { grid-template-columns: 140px minmax(0, 1fr); gap: 24px; }
+      .article-rail { grid-column: 2; }
+    }
+    @media (max-width: 720px) {
+      .page { width: min(100% - 28px, 1440px); }
+      .topbar { align-items: start; flex-direction: column; gap: 14px; padding-block: 18px; }
+      .topnav { width: 100%; overflow-x: auto; padding-bottom: 2px; }
+      .workspace { display: block; padding-top: 30px; }
+      .route-rail { position: static; margin-bottom: 32px; }
+      .route-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .rail-note { margin-top: 16px; }
+      .surface-header { display: block; }
+      .surface-status { margin-top: 16px; padding: 9px 0 0; border-top: 1px solid var(--line); border-left: 0; }
+      .window-view { min-height: 520px; }
+      .plan-empty { grid-template-columns: 1fr; gap: 24px; }
+      .plan-requirements { padding: 18px 0 0; border-top: 1px solid var(--line); border-left: 0; }
+    }
+    @media (max-width: 440px) {
+      .route-list { grid-template-columns: 1fr; }
+      .window-copy { padding: 22px; }
+      .window-copy h2 { font-size: 30px; }
+      .article-frame { display: block; }
+      .article-side, .article-rail { margin-top: 28px; padding: 18px 0 0; border-top: 1px solid var(--line); border-left: 0; }
+      .footer { display: block; }
+      .footer a { display: inline-block; margin-top: 9px; margin-right: 14px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+    @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+      .window-entry { backdrop-filter: none; background: #1b3035; }
+    }
+    @media (forced-colors: active) {
+      * { box-shadow: none !important; }
+      .route-button, .window-view, .desk-empty, .plan-empty, .prototype-note { border: 1px solid ButtonText; }
+      .window-view::before, .window-view::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <button class="mark" type="button" data-route="window" aria-label="回到首页">
+        <span class="mark-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        OPENBLOG / IA PROTOTYPE
+      </button>
+      <nav class="topnav" aria-label="MVP 导航">
+        <button type="button" data-route="writing">写作</button>
+        <button type="button" data-route="plan" hidden>规划</button>
+        <button type="button" data-route="article" hidden>文章结构样例</button>
+      </nav>
+      <span class="phase-label">D0 / ROUTE & EMPTY STATE</span>
+    </header>
+
+    <main class="workspace">
+      <aside class="route-rail" aria-label="原型页面状态">
+        <span class="kicker">ROUTE MAP</span>
+        <h1 class="rail-title">同一套框架下的四种状态</h1>
+        <div class="route-list">
+          <button class="route-button" type="button" data-route="window" aria-current="page">
+            <strong>首页「窗」</strong><span class="route-state route-state-live">可进入</span>
+            <small>/ · 情绪入口</small>
+          </button>
+          <button class="route-button" type="button" data-route="writing">
+            <strong>写作索引</strong><span class="route-state route-state-empty">空状态</span>
+            <small>/writing · 无发布内容</small>
+          </button>
+          <button class="route-button" type="button" data-route="article">
+            <strong>文章页</strong><span class="route-state route-state-structure">结构样例</span>
+            <small>/writing/[slug] · 非发布内容</small>
+          </button>
+          <button class="route-button" type="button" data-route="plan">
+            <strong>规划</strong><span class="route-state route-state-pending">未上线</span>
+            <small>/plan · 等待快照契约</small>
+          </button>
+        </div>
+        <div class="rail-note"><b>MVP 导航规则</b>未就绪的规划、关于、留言等项不出现在顶栏。路由仍可在原型中查看，用来验证未上线状态。</div>
+      </aside>
+
+      <section class="surface" aria-live="polite">
+        <header class="surface-header">
+          <div>
+            <div class="breadcrumb" data-breadcrumb>/</div>
+            <h2 class="surface-title" data-title>首页「窗」</h2>
+            <p class="surface-description" data-description>首页只做一件事：让访问者停下来。内容入口保持少，视觉场景承担情绪。</p>
+          </div>
+          <div class="surface-status" data-status>WINDOW / MVP</div>
+        </header>
+
+        <section class="view is-active" data-view="window" aria-label="首页窗原型">
+          <div class="window-view">
+            <span class="window-badge">STATIC POSTER / FALLBACK READY</span>
+            <div class="window-copy">
+              <span>Window / scene layer</span>
+              <h2>这里先让视觉说话</h2>
+              <p>这是结构占位，不是最终文案。下一轮会接入摄影底图、季节天气状态与 WebGL 增强。</p>
+              <button class="window-entry" type="button" data-route="writing">进入写作</button>
+            </div>
+            <div class="window-hud">作者城市 · 季节 · 天气 · 时间（待真实 provider）</div>
+          </div>
+        </section>
+
+        <section class="view" data-view="writing" aria-label="写作索引空状态">
+          <div class="desk-empty">
+            <div class="empty-inner">
+              <div class="empty-mark" aria-hidden="true">∅</div>
+              <h2>暂无已发布文章</h2>
+              <p>这里等待第一篇通过内容契约和发布审批的文章。没有虚构列表，也不提前显示空洞的鼓励文案。</p>
+              <div class="empty-meta">EDITORIAL / EMPTY STATE / PUBLISHABLE CONTENT = 0</div>
+            </div>
+          </div>
+          <div class="prototype-note"><b>D0 验证：</b>写作入口可达，内容为空时仍有清晰层级；规划、关于和互动功能没有混入当前导航。</div>
+        </section>
+
+        <section class="view" data-view="article" aria-label="文章结构样例">
+          <div class="article-frame">
+            <aside class="article-side">
+              <h3>Contents</h3>
+              <p>问题 / 论点 / 正文</p>
+              <p>修订 / 关联</p>
+              <p>这是结构占位</p>
+            </aside>
+            <article class="article-body">
+              <span class="fixture-label">STRUCTURE FIXTURE / 非发布内容</span>
+              <h2>文章标题位置</h2>
+              <div class="placeholder-line medium"></div>
+              <div class="placeholder-line short"></div>
+              <div class="article-copy">
+                <p>正文排版区域。此页只验证文章头、论点、目录、正文和语境栏的空间关系，不填入虚构文章。</p>
+                <p>真实内容进入后，问题、立场、成熟度和修订记录从 frontmatter 或版本历史生成。</p>
+              </div>
+            </article>
+            <aside class="article-rail">
+              <div class="rail-row"><b>THESIS</b><span>论点位置</span></div>
+              <div class="rail-row"><b>STANCE</b><span>立场 / 成熟度</span></div>
+              <div class="rail-row"><b>REVISIONS</b><span>修订时间线</span></div>
+              <div class="rail-row"><b>BACKLINKS</b><span>被引用内容</span></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" data-view="plan" aria-label="规划未上线状态">
+          <div class="plan-empty">
+            <div>
+              <span class="kicker">PLAN / NOT PUBLISHED</span>
+              <h2>规划模块尚未上线</h2>
+              <p>规划展示需要独立经济规划项目提供版本化 Ledger Snapshot。当前不显示真实金额、不伪造里程碑，也不把未决的透明度边界藏起来。</p>
+              <div class="not-in-nav">当前阶段：不进入 MVP 顶栏导航</div>
+            </div>
+            <div class="plan-requirements" aria-label="规划上线前置条件">
+              <span>字段级可见性矩阵</span>
+              <span>快照版本与发布日期</span>
+              <span>金额 / 比例的公开粒度</span>
+              <span>与文章域分开存储</span>
+            </div>
+          </div>
+          <div class="prototype-note"><b>D0 验证：</b>未就绪模块可被明确解释，但不会伪装成已上线能力；完成 D5 前不建立真实财务页面。</div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>DESIGN VALIDATION ONLY · NO PRODUCTION CONTENT</span>
+      <span><a href="./architecture-map.html">架构图</a> · <a href="../../redesign/_brief/design-status.md">状态矩阵</a> · <a href="../../redesign/source/original-requirements.md">需求原文</a></span>
+    </footer>
+  </div>
+  <script>
+    const routes = {
+      window: { breadcrumb: '/', title: '首页「窗」', description: '首页只做一件事：让访问者停下来。内容入口保持少，视觉场景承担情绪。', status: 'WINDOW / MVP' },
+      writing: { breadcrumb: '/writing', title: '写作', description: '回到信息传达：先明确有没有可读内容，再决定要不要增加筛选、系列和问题地图。', status: 'DESK / EMPTY STATE' },
+      article: { breadcrumb: '/writing/[slug]', title: '文章结构样例', description: '结构样例只用来验证版式关系，不代表一篇已经发布的文章。', status: 'DESK / STRUCTURE FIXTURE' },
+      plan: { breadcrumb: '/plan', title: '规划', description: '规划不与文章域混在一起；在公开快照契约和透明度边界确定前，它保持未上线。', status: 'DESK / NOT PUBLISHED' }
+    };
+    const routeButtons = [...document.querySelectorAll('[data-route]')];
+    const views = [...document.querySelectorAll('[data-view]')];
+    const breadcrumb = document.querySelector('[data-breadcrumb]');
+    const title = document.querySelector('[data-title]');
+    const description = document.querySelector('[data-description]');
+    const status = document.querySelector('[data-status]');
+
+    function setRoute(route, updateHash = true) {
+      const next = routes[route] ? route : 'window';
+      const data = routes[next];
+      views.forEach((view) => view.classList.toggle('is-active', view.dataset.view === next));
+      routeButtons.forEach((button) => {
+        const active = button.dataset.route === next;
+        if (button.hasAttribute('aria-current')) button.setAttribute('aria-current', active ? 'page' : 'false');
+        else button.setAttribute('aria-pressed', String(active));
+      });
+      breadcrumb.textContent = data.breadcrumb;
+      title.textContent = data.title;
+      description.textContent = data.description;
+      status.textContent = data.status;
+      document.title = `Openblog / ${data.title}`;
+      if (updateHash) history.replaceState(null, '', `#${next}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    routeButtons.forEach((button) => button.addEventListener('click', () => setRoute(button.dataset.route)));
+    window.addEventListener('hashchange', () => setRoute(location.hash.slice(1), false));
+    setRoute(location.hash.slice(1) || 'window', false);
+  </script>
+</body>
+</html>

@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:,">
+  <title>Openblog / 工作台结构原型</title>
+  <style>
+    :root {
+      --ink: #17272d;
+      --muted: #68777c;
+      --paper: #edf1ef;
+      --surface: #fbfcfa;
+      --surface-deep: #e1e9e6;
+      --line: rgba(23, 39, 45, .15);
+      --line-strong: rgba(23, 39, 45, .30);
+      --accent: #1d716a;
+      --accent-soft: #d7ece7;
+      --warning: #996719;
+      --warning-soft: #f4e8c9;
+      --danger: #963f3a;
+      --danger-soft: #f1dbd8;
+      --night: #20343b;
+      --font-sans: "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--paper); }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--font-sans); line-height: 1.6; }
+    button { font: inherit; color: inherit; }
+    [hidden] { display: none !important; }
+    button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid #cf6d2e;
+      outline-offset: 3px;
+    }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+    .skip-link {
+      position: absolute; left: 12px; top: -120px; z-index: 20;
+      display: inline-flex; align-items: center; min-height: 44px; padding: 10px 14px;
+      border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink);
+      text-decoration: none;
+    }
+    .skip-link:focus { top: 12px; }
+    .sill { height: 4px; background: var(--night); }
+    .page { width: min(1480px, calc(100% - 48px)); margin: 0 auto; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      padding: 18px 0; border-bottom: 1px solid var(--line-strong); flex-wrap: wrap;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font: 600 13px var(--font-mono); letter-spacing: .04em; }
+    .brand small { color: var(--muted); font-size: 11px; font-weight: 400; letter-spacing: .08em; }
+    .mark { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 19px; height: 19px; flex: none; }
+    .mark i { border: 1px solid var(--ink); background: var(--surface); }
+    .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .fixture-badge {
+      border: 1px dashed var(--warning); padding: 7px 9px; color: var(--warning);
+      background: var(--warning-soft); font: 600 10px var(--font-mono); letter-spacing: .04em;
+    }
+    .top-action {
+      min-height: 44px; border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px;
+      background: transparent; color: var(--muted); cursor: pointer; font-size: 12px;
+      transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .top-action:hover { border-color: var(--ink); color: var(--ink); background: var(--surface); }
+
+    .layout {
+      display: grid; grid-template-columns: 200px minmax(0, 760px) 240px;
+      gap: clamp(28px, 4vw, 48px); align-items: start; padding: 44px 0 72px;
+    }
+    .rail, .context { position: sticky; top: 18px; }
+    .kicker { color: var(--accent); font: 600 10px/1.2 var(--font-mono); letter-spacing: .09em; text-transform: uppercase; }
+    .rail h1 { margin: 10px 0 0; font-size: 22px; line-height: 1.2; font-weight: 650; }
+    .rail-sub { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    .view-nav { display: grid; gap: 4px; margin-top: 22px; }
+    .view-tab {
+      display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; align-items: center;
+      min-height: 44px; border: 1px solid transparent; border-radius: 4px; padding: 8px 9px;
+      background: transparent; color: var(--muted); cursor: pointer; text-align: left; font-size: 13px;
+      transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .view-tab:hover { border-color: var(--line); background: var(--surface); color: var(--ink); }
+    .view-tab[aria-current="true"] { border-color: var(--line-strong); background: var(--surface); color: var(--ink); }
+    .tab-num, .tab-meta { color: var(--muted); font: 10px var(--font-mono); }
+    .tab-meta { white-space: nowrap; }
+    .rail-note { margin-top: 24px; padding-top: 14px; border-top: 1px dashed var(--line-strong); color: var(--muted); font-size: 11px; }
+    .rail-note b { display: block; margin-bottom: 4px; color: var(--ink); font-weight: 650; }
+
+    .content { min-width: 0; }
+    .fixture-strip {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+      border: 1px dashed var(--warning); background: var(--warning-soft); color: var(--warning);
+      padding: 10px 12px; font: 600 10px/1.5 var(--font-mono);
+    }
+    .fixture-strip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+    .fixture-strip span:last-child { color: #6f5520; font: 11px/1.55 var(--font-sans); font-weight: 400; }
+
+    .content-header { padding: 26px 0 24px; border-bottom: 1px solid var(--line); }
+    .breadcrumb { color: var(--muted); font: 11px var(--font-mono); }
+    .question { margin-top: 18px; color: var(--accent); font-size: 14px; }
+    .content-header h2 { margin: 7px 0 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.14; letter-spacing: -.02em; font-weight: 650; }
+    .lede { max-width: 640px; margin: 13px 0 0; color: var(--muted); font-size: 14px; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 18px; color: var(--muted); font: 11px var(--font-mono); }
+    .meta-row span + span::before { content: "·"; margin-right: 14px; color: var(--line-strong); }
+
+    .block { padding-top: 26px; }
+    .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--line-strong); }
+    .block-head h3 { margin: 0; font-size: 15px; font-weight: 650; }
+    .block-head span { color: var(--muted); font: 10px var(--font-mono); }
+    .block-note { margin: 10px 0 0; color: var(--muted); font-size: 11px; }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid var(--line-strong); }
+    .metric { padding: 12px 12px 14px 0; border-right: 1px solid var(--line); }
+    .metric + .metric { padding-left: 12px; }
+    .metric:last-child { border-right: 0; }
+    .metric b { display: block; font: 600 22px/1.2 var(--font-mono); }
+    .metric span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+
+    .focus-list { border-bottom: 1px solid var(--line-strong); }
+    .focus-row { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 15px 0; border-bottom: 1px solid var(--line); }
+    .focus-row:last-child { border-bottom: 0; }
+    .focus-index { padding-top: 4px; color: var(--muted); font: 10px var(--font-mono); }
+    .focus-row h3 { margin: 0; font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
+    .focus-row p { margin: 4px 0 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+
+    .week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--line-strong); }
+    .week-day { min-height: 132px; padding: 10px 9px 12px; border-right: 1px solid var(--line); }
+    .week-day:last-child { border-right: 0; }
+    .week-day b { display: block; color: var(--muted); font: 10px var(--font-mono); letter-spacing: .05em; }
+    .week-slot { display: block; margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 7px; color: var(--muted); font-size: 11px; }
+    .week-slot + .week-slot { margin-top: 8px; }
+
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 6px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+    .filter {
+      min-height: 44px; border: 1px solid var(--line); border-radius: 3px; padding: 8px 10px;
+      background: transparent; color: var(--muted); cursor: pointer; font-size: 12px;
+      transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .filter:hover { border-color: var(--ink); color: var(--ink); background: var(--surface); }
+    .filter[aria-pressed="true"] { border-color: var(--ink); background: var(--surface); color: var(--ink); }
+    .filter-count { margin-left: 6px; color: var(--muted); font: 10px var(--font-mono); }
+    .filter-summary { margin: 0; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--muted); font: 10px/1.6 var(--font-mono); }
+    .task-list { border-bottom: 1px solid var(--line-strong); }
+    .task-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 170px 88px; gap: 16px; align-items: start; padding: 15px 0; border-bottom: 1px solid var(--line); }
+    .task-row:last-child { border-bottom: 0; }
+    .task-id, .project-id, .review-id { padding-top: 4px; color: var(--muted); font: 10px var(--font-mono); }
+    .task-row h3, .project-row h3 { margin: 0; font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
+    .task-row p, .project-row p { margin: 4px 0 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+    .task-meta { margin: 0; color: var(--muted); font: 10px/1.75 var(--font-mono); }
+    .task-meta div { display: flex; gap: 8px; }
+    .task-meta dt { flex: none; color: var(--muted); }
+    .task-meta dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+    .task-state-cell { text-align: right; }
+    .empty-state { padding: 38px 16px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; text-align: center; }
+
+    .project-list { border-bottom: 1px solid var(--line-strong); }
+    .project-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 190px 84px; gap: 16px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .project-row:last-child { border-bottom: 0; }
+    .project-scale { display: flex; gap: 4px; margin-top: 12px; }
+    .project-scale i { display: block; width: 26px; height: 4px; border: 1px solid var(--line-strong); background: var(--surface); }
+    .project-scale-note { display: block; margin-top: 5px; color: var(--muted); font: 9px var(--font-mono); }
+    .project-meta { margin: 0; color: var(--muted); font: 10px/1.7 var(--font-mono); }
+    .project-meta div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dotted var(--line); padding: 2px 0; }
+    .project-meta div:last-child { border-bottom: 0; }
+    .project-meta dt { color: var(--muted); }
+    .project-meta dd { margin: 0; color: var(--ink); text-align: right; overflow-wrap: anywhere; }
+    .project-state-cell { text-align: right; }
+
+    .review-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--line-strong); }
+    .review-summary div { padding: 12px 12px 14px 0; border-right: 1px solid var(--line); }
+    .review-summary div + div { padding-left: 12px; }
+    .review-summary div:last-child { border-right: 0; }
+    .review-summary b { display: block; font: 600 22px/1.2 var(--font-mono); }
+    .review-summary span { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .review-list { border-bottom: 1px solid var(--line-strong); }
+    .review-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 16px; align-items: start; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .review-row:last-child { border-bottom: 0; }
+    .review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .review-head h3 { margin: 0; font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
+    .review-row p { margin: 5px 0 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+    .review-kind { color: var(--muted); font: 10px/1.6 var(--font-mono) !important; }
+    .return-note { border-left: 2px solid var(--danger); padding: 3px 0 3px 8px; color: var(--danger) !important; }
+    .review-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .decision {
+      min-height: 44px; border: 1px solid var(--line-strong); border-radius: 3px; padding: 8px 12px;
+      background: transparent; color: var(--muted); cursor: pointer; font-size: 12px;
+      transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .decision:hover { border-color: var(--ink); color: var(--ink); background: var(--surface); }
+    .decision[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--surface); }
+    .decision[data-decision="returned"][aria-pressed="true"] { border-color: var(--danger); background: var(--danger); color: var(--surface); }
+
+    .state {
+      display: inline-block; border: 1px solid var(--line-strong); border-radius: 2px; padding: 3px 6px;
+      color: var(--muted); background: var(--surface); font: 10px var(--font-mono); white-space: nowrap;
+    }
+    .state-doing, .state-active, .state-approved { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .state-waiting, .state-pending { border-color: var(--warning); color: var(--warning); background: var(--warning-soft); }
+    .state-blocked, .state-returned { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+    .state-done, .state-paused { border-color: var(--line-strong); color: var(--muted); background: var(--surface-deep); }
+
+    .context { padding-left: 18px; border-left: 1px solid var(--line); }
+    .context-group { padding: 0 0 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .context-group:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+    .context-group h3 { margin: 0; color: var(--ink); font: 600 10px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+    .context-group p { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+    .context-group a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-size: 11px; text-underline-offset: 3px; overflow-wrap: anywhere; }
+    .context-badge { display: inline-block; margin-top: 7px; border: 1px dashed var(--warning); padding: 3px 5px; color: var(--warning); font: 600 9px var(--font-mono); }
+    .live-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--line); font-size: 11px; }
+    .live-row:last-child { border-bottom: 0; }
+    .live-row span { color: var(--muted); }
+    .live-row b { color: var(--ink); font: 600 10px var(--font-mono); text-align: right; overflow-wrap: anywhere; }
+    .audit { margin: 8px 0 0; padding: 0; list-style: none; }
+    .audit li { padding: 5px 0; border-bottom: 1px dotted var(--line); color: var(--muted); font: 10px/1.5 var(--font-mono); overflow-wrap: anywhere; }
+    .audit li:last-child { border-bottom: 0; }
+    .audit li b { color: var(--ink); font-weight: 600; }
+
+    .footer { display: flex; justify-content: space-between; gap: 20px; padding: 20px 0 32px; border-top: 1px solid var(--line-strong); color: var(--muted); font: 10px var(--font-mono); }
+    .footer a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 3px; color: inherit; text-underline-offset: 3px; }
+
+    @media (max-width: 1240px) {
+      .layout { grid-template-columns: 200px minmax(0, 1fr); }
+      .context {
+        grid-column: 2; position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 22px 28px; padding: 22px 0 0; border-top: 1px solid var(--line); border-left: 0;
+      }
+      .context-group { margin: 0; padding: 0; border-bottom: 0; }
+    }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; gap: 28px; padding-top: 30px; }
+      .rail, .context { position: static; }
+      .rail h1 { margin-top: 6px; }
+      .view-nav { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 4px; margin-top: 14px; padding: 2px 2px 6px; }
+      .view-tab { flex: 0 0 auto; }
+      .rail-note { display: none; }
+      .context { grid-column: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 20px 0 0; border-top: 1px solid var(--line); }
+    }
+    @media (max-width: 760px) {
+      .task-row { grid-template-columns: 52px minmax(0, 1fr); }
+      .task-meta, .task-state-cell { grid-column: 2; }
+      .task-state-cell { text-align: left; }
+      .project-row { grid-template-columns: 52px minmax(0, 1fr); }
+      .project-meta { grid-column: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 14px; }
+      .project-state-cell { grid-column: 2; text-align: left; }
+      .review-row { grid-template-columns: 52px minmax(0, 1fr); }
+      .review-actions { grid-column: 2; justify-content: flex-start; }
+    }
+    @media (max-width: 620px) {
+      .page { width: min(100% - 28px, 1480px); }
+      .topbar { align-items: flex-start; flex-direction: column; gap: 12px; padding-block: 14px; }
+      .topbar-right { width: 100%; justify-content: space-between; }
+      .layout { padding-top: 24px; }
+      .fixture-strip { display: block; }
+      .fixture-strip span:last-child { display: block; margin-top: 4px; }
+      .content-header { padding-top: 20px; }
+      .metrics, .review-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .metric:nth-child(2), .review-summary div:nth-child(2) { border-right: 0; }
+      .metric:nth-child(n+3), .review-summary div:nth-child(n+3) { border-top: 1px solid var(--line); }
+      .week-grid { grid-template-columns: 1fr; }
+      .week-day { min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .week-day:last-child { border-bottom: 0; }
+      .week-slot { margin-top: 7px; }
+      .focus-row { grid-template-columns: 28px minmax(0, 1fr); }
+      .focus-row .state { grid-column: 2; justify-self: start; }
+      .task-row, .project-row, .review-row { grid-template-columns: 1fr; gap: 8px; }
+      .task-id, .project-id, .review-id { padding-top: 0; }
+      .task-meta, .task-state-cell, .project-meta, .project-state-cell, .review-actions { grid-column: 1; }
+      .project-meta { grid-template-columns: 1fr; }
+      .project-meta div { max-width: 300px; }
+      .review-actions { justify-content: flex-start; }
+      .decision { flex: 1 1 auto; }
+      .context { grid-template-columns: 1fr; }
+      .footer { display: block; }
+      .footer a { display: inline-block; margin-top: 8px; margin-right: 12px; }
+    }
+    @media (forced-colors: active) {
+      * { box-shadow: none !important; }
+      .fixture-strip, .fixture-badge, .state, .filter, .view-tab, .decision, .top-action,
+      .week-day, .metric, .review-summary div, .return-note, .project-scale i { border-color: ButtonText; }
+      .state, .filter[aria-pressed="true"], .view-tab[aria-current="true"], .decision[aria-pressed="true"] {
+        border: 2px solid Highlight; background: Canvas; color: CanvasText;
+      }
+      .sill { background: ButtonText; }
+      .fixture-strip { border-style: dashed; }
+    }
+    @media (forced-colors: active) {
+      button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline-color: Highlight; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <div class="sill" aria-hidden="true"></div>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        OPENBLOG <small>/ WORKBENCH</small>
+      </div>
+      <div class="topbar-right">
+        <span class="fixture-badge">PRIVATE STRUCTURE FIXTURE / NO REAL DATA</span>
+        <button class="top-action" type="button" id="resetDemo">重置演示状态</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="rail" aria-label="工作台导航">
+        <span class="kicker">DESK / WORKBENCH</span>
+        <h1>工作台</h1>
+        <p class="rail-sub">四视图结构原型 · 仅内存</p>
+        <nav class="view-nav" aria-label="工作台视图">
+          <button class="view-tab" type="button" data-view="week" aria-current="true">
+            <span class="tab-num" aria-hidden="true">01</span>
+            <span>本周</span>
+            <span class="tab-meta" id="weekTabMeta" aria-hidden="true">4</span>
+          </button>
+          <button class="view-tab" type="button" data-view="tasks" aria-current="false">
+            <span class="tab-num" aria-hidden="true">02</span>
+            <span>任务</span>
+            <span class="tab-meta" id="tasksTabMeta" aria-hidden="true">8</span>
+          </button>
+          <button class="view-tab" type="button" data-view="projects" aria-current="false">
+            <span class="tab-num" aria-hidden="true">03</span>
+            <span>项目</span>
+            <span class="tab-meta" id="projectsTabMeta" aria-hidden="true">4</span>
+          </button>
+          <button class="view-tab" type="button" data-view="review" aria-current="false">
+            <span class="tab-num" aria-hidden="true">04</span>
+            <span>审阅</span>
+            <span class="tab-meta" id="reviewTabMeta" aria-hidden="true">3</span>
+          </button>
+        </nav>
+        <div class="rail-note">
+          <b>读法</b>
+          左侧切换视图，主列使用发丝线排版；右侧只放边界、内存状态和操作记录。
+        </div>
+      </aside>
+
+      <main class="content" id="main" tabindex="-1">
+        <div class="fixture-strip" role="note">
+          <i class="dot" aria-hidden="true"></i>
+          <span>PRIVATE STRUCTURE FIXTURE / NO REAL DATA</span>
+          <span>标题、项目、审阅条目和数值均为结构占位；按钮只更新本页内存，不写文件、不请求网络。</span>
+        </div>
+
+        <section class="view-panel" id="panel-week" data-panel="week" aria-labelledby="weekHeading" tabindex="0">
+          <header class="content-header">
+            <div class="breadcrumb">/workbench/week · WEEK</div>
+            <div class="question">本周需要先看什么？</div>
+            <h2 id="weekHeading">本周</h2>
+            <p class="lede">周区间、焦点和日程都是结构占位。这一视图只验证“先看重点，再看节奏”的读法，不制造本周安排。</p>
+            <div class="meta-row"><span>RANGE PLACEHOLDER</span><span>4 FOCUS SLOTS</span><span>MEMORY ONLY</span></div>
+          </header>
+          <div class="metrics" aria-label="本周结构计数，来源于合成 fixture">
+            <div class="metric"><b id="metricDoing">0</b><span>进行中任务</span></div>
+            <div class="metric"><b id="metricWaiting">0</b><span>等待任务</span></div>
+            <div class="metric"><b id="metricBlocked">0</b><span>阻塞任务</span></div>
+            <div class="metric"><b id="metricPending">0</b><span>待审条目</span></div>
+          </div>
+          <section class="block" aria-labelledby="focusTitle">
+            <div class="block-head"><h3 id="focusTitle">本周焦点</h3><span>FOCUS / FIXTURE</span></div>
+            <div class="focus-list" id="focusList"></div>
+          </section>
+          <section class="block" aria-labelledby="weekGridTitle">
+            <div class="block-head"><h3 id="weekGridTitle">一周结构</h3><span>RANGE / PLACEHOLDER</span></div>
+            <div class="week-grid" id="weekGrid"></div>
+            <p class="block-note">每一天只保留“安排位置”，不填入虚构会议、截止时间或工作量。计数由合成 fixture 计算，不代表真实工作量。</p>
+          </section>
+        </section>
+
+        <section class="view-panel" id="panel-tasks" data-panel="tasks" aria-labelledby="tasksHeading" tabindex="0" hidden>
+          <header class="content-header">
+            <div class="breadcrumb">/workbench/tasks · TASKS</div>
+            <div class="question">哪些任务需要先处理？</div>
+            <h2 id="tasksHeading">任务</h2>
+            <p class="lede">同一份任务清单按状态筛选。筛选只改变本页显示，不改变 fixture，也不写文件。</p>
+            <div class="meta-row"><span>8 FIXTURE ROWS</span><span>6 FILTER STATES</span><span>MEMORY ONLY</span></div>
+          </header>
+          <div class="filter-bar" id="taskFilters" role="group" aria-label="任务状态筛选"></div>
+          <p class="filter-summary" id="taskSummary" aria-live="polite"></p>
+          <div class="task-list" id="taskList"></div>
+          <div class="empty-state" id="taskEmpty" hidden>当前筛选下没有结构占位任务。</div>
+        </section>
+
+        <section class="view-panel" id="panel-projects" data-panel="projects" aria-labelledby="projectsHeading" tabindex="0" hidden>
+          <header class="content-header">
+            <div class="breadcrumb">/workbench/projects · PROJECTS</div>
+            <div class="question">哪些项目需要继续推进？</div>
+            <h2 id="projectsHeading">项目</h2>
+            <p class="lede">项目只保留名称、阶段、负责人和下一节点的位置。这里没有虚构百分比，也没有卡片墙。</p>
+            <div class="meta-row"><span>4 PROJECT SLOTS</span><span>PROGRESS PLACEHOLDER</span><span>MEMORY ONLY</span></div>
+          </header>
+          <div class="project-list" id="projectList"></div>
+          <p class="block-note">进度刻度只显示未填充的位置；任务数由 fixture 中关联的占位任务计算，不代表真实项目规模。</p>
+        </section>
+
+        <section class="view-panel" id="panel-review" data-panel="review" aria-labelledby="reviewHeading" tabindex="0" hidden>
+          <header class="content-header">
+            <div class="breadcrumb">/workbench/review · REVIEW</div>
+            <div class="question">哪些变更需要作者决定？</div>
+            <h2 id="reviewHeading">审阅</h2>
+            <p class="lede">批准或退回只改变本页内存状态，不写文件、不通知任何人。真实审阅需要接入内容契约、权限和审计。</p>
+            <div class="meta-row"><span>5 REVIEW SLOTS</span><span>LOCAL DECISIONS ONLY</span><span>NO FILES WRITTEN</span></div>
+          </header>
+          <div class="review-summary" aria-label="审阅状态计数，来源于合成 fixture">
+            <div><b id="reviewPending">0</b><span>待审</span></div>
+            <div><b id="reviewApproved">0</b><span>已批准</span></div>
+            <div><b id="reviewReturned">0</b><span>已退回</span></div>
+          </div>
+          <div class="review-list" id="reviewList"></div>
+          <p class="block-note">退回时只展开“退回原因位置”，不要求填写理由；批准和退回可以随时改选，全部只存在当前页面内存中。</p>
+        </section>
+      </main>
+
+      <aside class="context" aria-label="原型边界与内存状态">
+        <div class="context-group">
+          <h3>FIXTURE BOUNDARY</h3>
+          <span class="context-badge">PRIVATE STRUCTURE FIXTURE</span>
+          <p>NO REAL DATA / 不连接账号、项目、审阅或文件系统。</p>
+          <p><a href="./fixtures/workbench.synthetic.json">workbench.synthetic.json</a></p>
+        </div>
+        <div class="context-group">
+          <h3>LIVE STATE</h3>
+          <div class="live-row"><span>当前视图</span><b id="liveView">本周</b></div>
+          <div class="live-row"><span>任务筛选</span><b id="liveFilter">全部</b></div>
+          <div class="live-row"><span>待审条目</span><b id="livePending">3 条</b></div>
+          <div class="live-row"><span>内存操作</span><b id="liveActions">0 条</b></div>
+          <div class="live-row"><span>最近操作</span><b id="liveLast">尚无</b></div>
+        </div>
+        <div class="context-group">
+          <h3>AUDIT / MEMORY</h3>
+          <ol class="audit" id="audit"><li>尚无内存操作</li></ol>
+        </div>
+        <div class="context-group">
+          <h3>KEYBOARD / A11Y</h3>
+          <p>Tab 聚焦，Enter 或空格触发；焦点环始终可见。</p>
+          <p>最小点击区 44px；reduced-motion 与 forced-colors 已覆盖。</p>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="footer">
+      <span>D6 / WORKBENCH PROTOTYPE · PRIVATE STRUCTURE FIXTURE · NO REAL DATA</span>
+      <span>
+        <a href="./desk-prototype.html">Desk</a> ·
+        <a href="./ia-prototype.html">IA</a> ·
+        <a href="./architecture-map.html">架构图</a> ·
+        <a href="./fixtures/workbench.synthetic.json">fixture</a>
+      </span>
+    </footer>
+  </div>
+
+  <div class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></div>
+
+  <script type="application/json" id="workbench-fixture">
+{
+  "schema": "workbench-fixture/v1",
+  "synthetic": true,
+  "notice": "PRIVATE STRUCTURE FIXTURE / NO REAL DATA",
+  "purpose": "工作台四视图、任务筛选和审阅决定的合成结构 fixture；不包含真实账号、项目、任务或审阅内容。",
+  "views": [
+    { "id": "week", "label": "本周", "number": "01" },
+    { "id": "tasks", "label": "任务", "number": "02" },
+    { "id": "projects", "label": "项目", "number": "03" },
+    { "id": "review", "label": "审阅", "number": "04" }
+  ],
+  "taskStatuses": [
+    { "id": "all", "label": "全部" },
+    { "id": "todo", "label": "待开始" },
+    { "id": "doing", "label": "进行中" },
+    { "id": "waiting", "label": "等待" },
+    { "id": "blocked", "label": "阻塞" },
+    { "id": "done", "label": "已完成" }
+  ],
+  "projectStatuses": [
+    { "id": "active", "label": "进行中" },
+    { "id": "waiting", "label": "等待" },
+    { "id": "paused", "label": "暂停" },
+    { "id": "done", "label": "已结束" }
+  ],
+  "reviewStatuses": [
+    { "id": "pending", "label": "待审" },
+    { "id": "approved", "label": "已批准" },
+    { "id": "returned", "label": "已退回" }
+  ],
+  "week": {
+    "range": "周区间占位",
+    "focusTaskIds": [
+      "task-fixture-01",
+      "task-fixture-03",
+      "task-fixture-04",
+      "task-fixture-06"
+    ],
+    "days": [
+      { "id": "mon", "label": "周一", "slot": "安排位置" },
+      { "id": "tue", "label": "周二", "slot": "安排位置" },
+      { "id": "wed", "label": "周三", "slot": "安排位置" },
+      { "id": "thu", "label": "周四", "slot": "安排位置" },
+      { "id": "fri", "label": "周五", "slot": "安排位置" },
+      { "id": "sat", "label": "周六", "slot": "安排位置" },
+      { "id": "sun", "label": "周日", "slot": "安排位置" }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "task-fixture-01",
+      "code": "T-0001",
+      "title": "任务标题位置 A",
+      "projectId": "project-fixture-01",
+      "status": "doing",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-02",
+      "code": "T-0002",
+      "title": "任务标题位置 B",
+      "projectId": "project-fixture-01",
+      "status": "todo",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-03",
+      "code": "T-0003",
+      "title": "任务标题位置 C",
+      "projectId": "project-fixture-02",
+      "status": "waiting",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-04",
+      "code": "T-0004",
+      "title": "任务标题位置 D",
+      "projectId": "project-fixture-02",
+      "status": "blocked",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-05",
+      "code": "T-0005",
+      "title": "任务标题位置 E",
+      "projectId": "project-fixture-03",
+      "status": "done",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-06",
+      "code": "T-0006",
+      "title": "任务标题位置 F",
+      "projectId": "project-fixture-03",
+      "status": "doing",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-07",
+      "code": "T-0007",
+      "title": "任务标题位置 G",
+      "projectId": "project-fixture-01",
+      "status": "todo",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    },
+    {
+      "id": "task-fixture-08",
+      "code": "T-0008",
+      "title": "任务标题位置 H",
+      "projectId": "project-fixture-04",
+      "status": "waiting",
+      "owner": "角色占位",
+      "due": "日期占位",
+      "priority": "优先级位置",
+      "acceptance": "验收标准位置"
+    }
+  ],
+  "projects": [
+    {
+      "id": "project-fixture-01",
+      "code": "P-0001",
+      "name": "项目名称位置 A",
+      "status": "active",
+      "owner": "角色占位",
+      "phase": "阶段位置",
+      "nextStep": "下一节点位置",
+      "summary": "项目摘要位置"
+    },
+    {
+      "id": "project-fixture-02",
+      "code": "P-0002",
+      "name": "项目名称位置 B",
+      "status": "waiting",
+      "owner": "角色占位",
+      "phase": "阶段位置",
+      "nextStep": "下一节点位置",
+      "summary": "项目摘要位置"
+    },
+    {
+      "id": "project-fixture-03",
+      "code": "P-0003",
+      "name": "项目名称位置 C",
+      "status": "active",
+      "owner": "角色占位",
+      "phase": "阶段位置",
+      "nextStep": "下一节点位置",
+      "summary": "项目摘要位置"
+    },
+    {
+      "id": "project-fixture-04",
+      "code": "P-0004",
+      "name": "项目名称位置 D",
+      "status": "paused",
+      "owner": "角色占位",
+      "phase": "阶段位置",
+      "nextStep": "下一节点位置",
+      "summary": "项目摘要位置"
+    }
+  ],
+  "review": {
+    "items": [
+      {
+        "id": "review-fixture-01",
+        "code": "R-0001",
+        "title": "审阅条目位置 A",
+        "projectId": "project-fixture-01",
+        "kind": "内容变更",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "pending"
+      },
+      {
+        "id": "review-fixture-02",
+        "code": "R-0002",
+        "title": "审阅条目位置 B",
+        "projectId": "project-fixture-02",
+        "kind": "结构变更",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "pending"
+      },
+      {
+        "id": "review-fixture-03",
+        "code": "R-0003",
+        "title": "审阅条目位置 C",
+        "projectId": "project-fixture-03",
+        "kind": "发布",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "pending"
+      },
+      {
+        "id": "review-fixture-04",
+        "code": "R-0004",
+        "title": "审阅条目位置 D",
+        "projectId": "project-fixture-04",
+        "kind": "回滚",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "approved"
+      },
+      {
+        "id": "review-fixture-05",
+        "code": "R-0005",
+        "title": "审阅条目位置 E",
+        "projectId": "project-fixture-01",
+        "kind": "内容变更",
+        "submitter": "角色占位",
+        "summary": "变更摘要位置",
+        "status": "returned"
+      }
+    ]
+  }
+}
+  </script>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const FIXTURE = JSON.parse(document.getElementById('workbench-fixture').textContent);
+      const taskById = new Map(FIXTURE.tasks.map((task) => [task.id, task]));
+      const projectById = new Map(FIXTURE.projects.map((project) => [project.id, project]));
+      const reviewById = new Map(FIXTURE.review.items.map((item) => [item.id, item]));
+      const taskStatusLabels = Object.fromEntries(FIXTURE.taskStatuses.map((status) => [status.id, status.label]));
+      const projectStatusLabels = Object.fromEntries(FIXTURE.projectStatuses.map((status) => [status.id, status.label]));
+      const reviewStatusLabels = Object.fromEntries(FIXTURE.reviewStatuses.map((status) => [status.id, status.label]));
+
+      const state = {
+        view: 'week',
+        taskFilter: 'all',
+        reviews: Object.fromEntries(FIXTURE.review.items.map((item) => [item.id, item.status])),
+        actions: []
+      };
+      const initialReviews = { ...state.reviews };
+      let announceTimer = 0;
+
+      const el = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+      };
+
+      const badge = (status, label, extraClass) => {
+        return el('span', ['state', `state-${status}`, extraClass || ''].filter(Boolean).join(' '), label);
+      };
+
+      const countTasks = () => {
+        const counts = {};
+        FIXTURE.taskStatuses.forEach((status) => {
+          if (status.id === 'all') return;
+          counts[status.id] = FIXTURE.tasks.filter((task) => task.status === status.id).length;
+        });
+        return counts;
+      };
+
+      const countReviews = () => {
+        const counts = {};
+        FIXTURE.reviewStatuses.forEach((status) => {
+          counts[status.id] = Object.values(state.reviews).filter((value) => value === status.id).length;
+        });
+        return counts;
+      };
+
+      const announce = (message) => {
+        const node = document.getElementById('announcer');
+        window.clearTimeout(announceTimer);
+        node.textContent = '';
+        announceTimer = window.setTimeout(() => {
+          node.textContent = message;
+        }, 30);
+      };
+
+      const renderAudit = () => {
+        const list = document.getElementById('audit');
+        if (!state.actions.length) {
+          list.replaceChildren(el('li', '', '尚无内存操作'));
+          return;
+        }
+        list.replaceChildren(...state.actions.map((entry) => {
+          const li = el('li');
+          li.append(el('b', '', entry.action));
+          li.append(document.createTextNode(` · ${entry.detail}`));
+          return li;
+        }));
+      };
+
+      const renderContext = () => {
+        const view = FIXTURE.views.find((item) => item.id === state.view);
+        document.getElementById('liveView').textContent = view.label;
+        document.getElementById('liveFilter').textContent = taskStatusLabels[state.taskFilter];
+        document.getElementById('livePending').textContent = `${countReviews().pending} 条`;
+        document.getElementById('liveActions').textContent = `${state.actions.length} 条`;
+        const last = state.actions[0];
+        document.getElementById('liveLast').textContent = last ? `${last.action} · ${last.detail}` : '尚无';
+        renderAudit();
+      };
+
+      const record = (action, detail) => {
+        state.actions.unshift({ action, detail });
+        state.actions = state.actions.slice(0, 4);
+        renderContext();
+      };
+
+      const renderMetrics = () => {
+        const tasks = countTasks();
+        const reviews = countReviews();
+        document.getElementById('metricDoing').textContent = String(tasks.doing);
+        document.getElementById('metricWaiting').textContent = String(tasks.waiting);
+        document.getElementById('metricBlocked').textContent = String(tasks.blocked);
+        document.getElementById('metricPending').textContent = String(reviews.pending);
+        document.getElementById('reviewPending').textContent = String(reviews.pending);
+        document.getElementById('reviewApproved').textContent = String(reviews.approved);
+        document.getElementById('reviewReturned').textContent = String(reviews.returned);
+      };
+
+      const renderTabMeta = () => {
+        const pending = countReviews().pending;
+        const weekTab = document.querySelector('[data-view="week"]');
+        const tasksTab = document.querySelector('[data-view="tasks"]');
+        const projectsTab = document.querySelector('[data-view="projects"]');
+        const reviewTab = document.querySelector('[data-view="review"]');
+        document.getElementById('weekTabMeta').textContent = String(FIXTURE.week.focusTaskIds.length);
+        document.getElementById('tasksTabMeta').textContent = String(FIXTURE.tasks.length);
+        document.getElementById('projectsTabMeta').textContent = String(FIXTURE.projects.length);
+        document.getElementById('reviewTabMeta').textContent = String(pending);
+        weekTab.setAttribute('aria-label', `本周，${FIXTURE.week.focusTaskIds.length} 个焦点位置`);
+        tasksTab.setAttribute('aria-label', `任务，${FIXTURE.tasks.length} 条结构占位`);
+        projectsTab.setAttribute('aria-label', `项目，${FIXTURE.projects.length} 条结构占位`);
+        reviewTab.setAttribute('aria-label', `审阅，${pending} 条待审`);
+      };
+
+      const renderWeek = () => {
+        const focusList = document.getElementById('focusList');
+        focusList.replaceChildren(...FIXTURE.week.focusTaskIds.map((id, index) => {
+          const task = taskById.get(id);
+          const project = projectById.get(task.projectId);
+          const row = el('article', 'focus-row');
+          row.append(el('div', 'focus-index', String(index + 1).padStart(2, '0')));
+          const main = el('div', 'focus-main');
+          main.append(el('h3', '', task.title));
+          main.append(el('p', '', `${project.name} · ${task.acceptance}`));
+          row.append(main);
+          row.append(badge(task.status, taskStatusLabels[task.status]));
+          return row;
+        }));
+
+        const grid = document.getElementById('weekGrid');
+        grid.replaceChildren(...FIXTURE.week.days.map((day) => {
+          const cell = el('div', 'week-day');
+          cell.append(el('b', '', day.label));
+          cell.append(el('span', 'week-slot', day.slot));
+          cell.append(el('span', 'week-slot', day.slot));
+          return cell;
+        }));
+      };
+
+      const buildFilters = () => {
+        const container = document.getElementById('taskFilters');
+        const counts = countTasks();
+        container.replaceChildren(...FIXTURE.taskStatuses.map((status) => {
+          const button = el('button', 'filter');
+          button.type = 'button';
+          button.dataset.status = status.id;
+          button.setAttribute('aria-pressed', String(status.id === state.taskFilter));
+          button.append(document.createTextNode(status.label));
+          const count = status.id === 'all' ? FIXTURE.tasks.length : counts[status.id];
+          button.append(el('span', 'filter-count', String(count)));
+          return button;
+        }));
+      };
+
+      const syncFilters = () => {
+        document.querySelectorAll('#taskFilters .filter').forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.status === state.taskFilter));
+        });
+      };
+
+      const createTaskRow = (task) => {
+        const project = projectById.get(task.projectId);
+        const row = el('article', 'task-row');
+        row.append(el('div', 'task-id', task.code));
+        const main = el('div', 'task-main');
+        main.append(el('h3', '', task.title));
+        main.append(el('p', '', `${project.name} · ${task.acceptance}`));
+        row.append(main);
+        const meta = el('dl', 'task-meta');
+        [
+          ['负责', task.owner],
+          ['期限', task.due],
+          ['优先级', task.priority]
+        ].forEach(([label, value]) => {
+          const line = el('div');
+          line.append(el('dt', '', label));
+          line.append(el('dd', '', value));
+          meta.append(line);
+        });
+        row.append(meta);
+        const stateCell = el('div', 'task-state-cell');
+        stateCell.append(badge(task.status, taskStatusLabels[task.status]));
+        row.append(stateCell);
+        return row;
+      };
+
+      const renderTasks = () => {
+        const visible = state.taskFilter === 'all'
+          ? FIXTURE.tasks
+          : FIXTURE.tasks.filter((task) => task.status === state.taskFilter);
+        document.getElementById('taskList').replaceChildren(...visible.map(createTaskRow));
+        document.getElementById('taskEmpty').hidden = visible.length !== 0;
+        document.getElementById('taskSummary').textContent =
+          `显示 ${visible.length} / ${FIXTURE.tasks.length} 条结构占位任务 · 筛选只改内存`;
+      };
+
+      const createProjectRow = (project) => {
+        const row = el('article', 'project-row');
+        row.append(el('div', 'project-id', project.code));
+        const main = el('div', 'project-main');
+        main.append(el('h3', '', project.name));
+        main.append(el('p', '', `${project.summary} · 下一步：${project.nextStep}`));
+        const scale = el('div', 'project-scale');
+        scale.setAttribute('role', 'img');
+        scale.setAttribute('aria-label', '进度位置，尚未接入真实进度');
+        for (let index = 0; index < 5; index += 1) scale.append(el('i'));
+        main.append(scale);
+        main.append(el('span', 'project-scale-note', 'PROGRESS / PLACEHOLDER'));
+        row.append(main);
+        const taskCount = FIXTURE.tasks.filter((task) => task.projectId === project.id).length;
+        const meta = el('dl', 'project-meta');
+        [
+          ['阶段', project.phase],
+          ['负责', project.owner],
+          ['任务', `${taskCount} 条占位`]
+        ].forEach(([label, value]) => {
+          const line = el('div');
+          line.append(el('dt', '', label));
+          line.append(el('dd', '', value));
+          meta.append(line);
+        });
+        row.append(meta);
+        const stateCell = el('div', 'project-state-cell');
+        stateCell.append(badge(project.status, projectStatusLabels[project.status]));
+        row.append(stateCell);
+        return row;
+      };
+
+      const renderProjects = () => {
+        document.getElementById('projectList').replaceChildren(...FIXTURE.projects.map(createProjectRow));
+      };
+
+      const updateReviewRow = (id) => {
+        const row = document.querySelector(`[data-review-row="${id}"]`);
+        const status = state.reviews[id];
+        const chip = row.querySelector('.review-state');
+        chip.className = `state state-${status} review-state`;
+        chip.textContent = reviewStatusLabels[status];
+        row.querySelectorAll('.decision').forEach((button) => {
+          button.setAttribute('aria-pressed', String(button.dataset.decision === status));
+        });
+        row.querySelector('.return-note').hidden = status !== 'returned';
+      };
+
+      const decide = (id, decision) => {
+        const item = reviewById.get(id);
+        const nextLabel = reviewStatusLabels[decision];
+        if (state.reviews[id] === decision) {
+          announce(`${item.title}：当前已是${nextLabel}状态（仅内存）`);
+          return;
+        }
+        state.reviews[id] = decision;
+        updateReviewRow(id);
+        renderMetrics();
+        renderTabMeta();
+        record(
+          decision === 'approved' ? 'review.approve' : 'review.return',
+          `${item.title} → ${nextLabel}`
+        );
+        announce(`${item.title}：${nextLabel}（仅内存，未写入文件）`);
+      };
+
+      const createReviewRow = (item) => {
+        const project = projectById.get(item.projectId);
+        const status = state.reviews[item.id];
+        const row = el('article', 'review-row');
+        row.dataset.reviewRow = item.id;
+        row.append(el('div', 'review-id', item.code));
+        const main = el('div', 'review-main');
+        const head = el('div', 'review-head');
+        head.append(el('h3', '', item.title));
+        head.append(badge(status, reviewStatusLabels[status], 'review-state'));
+        main.append(head);
+        main.append(el('p', '', `${project.name} · ${item.summary}`));
+        main.append(el('p', 'review-kind', `类型：${item.kind} · 提交者：${item.submitter}`));
+        const note = el('p', 'review-kind return-note', '退回原因位置 · 原型不要求填写理由');
+        note.hidden = status !== 'returned';
+        main.append(note);
+        row.append(main);
+
+        const actions = el('div', 'review-actions');
+        actions.setAttribute('role', 'group');
+        actions.setAttribute('aria-label', `${item.title} 的审阅决定`);
+        [
+          ['approved', '批准'],
+          ['returned', '退回']
+        ].forEach(([decision, label]) => {
+          const button = el('button', 'decision', label);
+          button.type = 'button';
+          button.dataset.decision = decision;
+          button.setAttribute('aria-pressed', String(status === decision));
+          button.addEventListener('click', () => decide(item.id, decision));
+          actions.append(button);
+        });
+        row.append(actions);
+        return row;
+      };
+
+      const renderReviewList = () => {
+        document.getElementById('reviewList').replaceChildren(...FIXTURE.review.items.map(createReviewRow));
+      };
+
+      const selectView = (view) => {
+        state.view = view;
+        document.querySelectorAll('.view-tab').forEach((button) => {
+          button.setAttribute('aria-current', String(button.dataset.view === view));
+        });
+        document.querySelectorAll('.view-panel').forEach((panel) => {
+          panel.hidden = panel.dataset.panel !== view;
+        });
+        renderContext();
+      };
+
+      const handleViewClick = (event) => {
+        const button = event.target.closest('.view-tab');
+        if (!button || state.view === button.dataset.view) return;
+        selectView(button.dataset.view);
+        const view = FIXTURE.views.find((item) => item.id === button.dataset.view);
+        announce(`已切换到${view.label}视图（仅内存）`);
+      };
+
+      const handleFilterClick = (event) => {
+        const button = event.target.closest('.filter');
+        if (!button || state.taskFilter === button.dataset.status) return;
+        state.taskFilter = button.dataset.status;
+        syncFilters();
+        renderTasks();
+        renderContext();
+      };
+
+      const resetDemo = () => {
+        state.view = 'week';
+        state.taskFilter = 'all';
+        state.reviews = { ...initialReviews };
+        state.actions = [];
+        selectView('week');
+        syncFilters();
+        renderTasks();
+        renderReviewList();
+        renderMetrics();
+        renderTabMeta();
+        record('fixture.reset', '合成状态已恢复为初始值');
+        announce('已恢复到初始结构 fixture（仅内存，未写入文件）');
+      };
+
+      document.querySelector('.view-nav').addEventListener('click', handleViewClick);
+      document.getElementById('taskFilters').addEventListener('click', handleFilterClick);
+      document.getElementById('resetDemo').addEventListener('click', resetDemo);
+
+      buildFilters();
+      renderWeek();
+      renderProjects();
+      renderReviewList();
+      renderMetrics();
+      renderTabMeta();
+      renderTasks();
+      selectView('week');
+    })();
+  </script>
+</body>
+</html>
